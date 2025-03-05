@@ -1,4 +1,7 @@
 /* LoginScreen.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 .login-container {
     width: 100%;

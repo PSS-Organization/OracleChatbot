@@ -18,6 +18,7 @@ function App() {
       <Route path="/signup" element={<Signup />} />
       {/* Add other routes as needed */}
     </Routes>
+
   );
 }
 

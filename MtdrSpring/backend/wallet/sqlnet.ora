@@ -1,2 +1,2 @@
-WALLET_LOCATION = (SOURCE = (METHOD = file) (METHOD_DATA = (DIRECTORY="?/network/admin")))
+WALLET_LOCATION = (SOURCE = (METHOD = file) (METHOD_DATA = (DIRECTORY="/home/a01772130/reacttodo/oci-react-samples/MtdrSpring/wallet")))
 SSL_SERVER_DN_MATCH=yes

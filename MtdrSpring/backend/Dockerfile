@@ -9,8 +9,8 @@ COPY wallet/ /mtdrworkshop/creds
 ENV db_user="TODOUSER"
 #ENV ui_username="admin"
 #ENV ui_password="none0001"
-ENV dbpassword="None00010001"
-ENV db_url="jdbc:oracle:thin:@reacttodox7djf_tp?TNS_ADMIN=/mtdrworkshop/creds"
+ENV dbpassword="None74108520"
+ENV db_url="jdbc:oracle:thin:@reacttodoai3d0_tp?TNS_ADMIN=/mtdrworkshop/creds"
 ENV driver_class_name="oracle.jdbc.OracleDriver"
 ENV _JAVA_OPTIONS=-Dlogging.level.org.springframework=INFO
 ENTRYPOINT ["java","-jar","MyTodoList.jar"]

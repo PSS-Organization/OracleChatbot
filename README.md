@@ -1,3 +1,31 @@
+# Commands
+
+CARPETA DE FRONTEND
+
+npm install <- Instalar las dependencias
+npm start <- correr en local
+
+# Deploy
+
+CARPETA DE BACKEND
+
+mvn clean
+mvn package
+./containerImgGenerator.sh <- MACOS
+./containerImgGenerator.bat <- WINDOWS
+
+
+
+
+
+
+
+
+
+
+
+
+
 # oci-react-samples
 A repository for full stack Cloud Native applications with a React JS frontend and various backends (Java, Python, DotNet, and so on) on the Oracle Cloud Infrastructure.
 

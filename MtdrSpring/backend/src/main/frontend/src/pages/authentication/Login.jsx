@@ -2,17 +2,38 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { API_SIGNUP } from '../../API';
 import '../../css/Global.css';
+import axios from 'axios'; 
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [error, setError] = useState(null);
     const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log('Email:', email);
-        console.log('Password:', password);
-        navigate('/todolist');
+        setError(null); // Clear previous errors
+    
+        try {
+            // Send login request to backend
+            const response = await axios.post('http://localhost:8080/usuarios/login', { 
+                email, 
+                password 
+            });
+    
+            if (response.data.success) {
+        
+                localStorage.setItem('user', JSON.stringify(response.data.usuario));
+    
+             
+                navigate('/todolist');
+            } else {
+               
+                setError(response.data.message || 'Invalid credentials');
+            }
+        } catch (err) {
+            setError('Login failed. Please check your credentials.');
+        }
     };
 
     return (
@@ -20,6 +41,8 @@ const Login = () => {
             <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg w-80 shadow-md">
                 <h1 className="mb-1 text-2xl font-semibold text-gray-900 text-center">Welcome back</h1>
                 <p className="mb-6 text-gray-600 text-center">Please enter your details to sign in</p>
+
+                {error && <p className="text-red-500 text-center">{error}</p>}
 
                 <label className="block mb-2 font-semibold text-gray-700" htmlFor="email">Email address</label>
                 <input

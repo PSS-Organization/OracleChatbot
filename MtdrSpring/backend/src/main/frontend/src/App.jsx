@@ -6,8 +6,9 @@
 // import Moment from 'react-moment';
 
 import { Routes, Route, Navigate } from "react-router-dom";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
+import Login from "./pages/authentication/Login";
+import Signup from "./pages/authentication/Signup";
+
 
 function App() {
   return (

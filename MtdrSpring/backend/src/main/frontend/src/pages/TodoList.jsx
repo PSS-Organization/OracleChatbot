@@ -6,7 +6,6 @@ import Moment from 'react-moment';
 import { API_LIST } from '../API';
 
 
-
 function TodoList() {
     // isLoading is true while waiting for the backend to return the list
     // of items. We use this state to display a spinning circle:

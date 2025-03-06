@@ -167,56 +167,75 @@ function TodoList() {
         );
     }
     return (
-        <div className="App">
-            <h1>MY TODO LIST</h1>
+        <div className="bg-gray-900 text-white flex flex-col items-center p-6 rounded-lg shadow-lg w-full max-w-3xl mx-auto mt-8">
+            <h1 className="text-2xl font-bold mb-4">MY TODO LIST</h1>
             <NewItem addItem={addItem} isInserting={isInserting} />
-            {error &&
-                <p>Error: {error.message}</p>
-            }
-            {isLoading &&
-                <CircularProgress />
-            }
-            {!isLoading &&
-                <div id="maincontent">
-                    <table id="itemlistNotDone" className="itemlist">
-                        <TableBody>
-                            {items.map(item => (
+            {error && <p className="text-red-500">Error: {error.message}</p>}
+            {isLoading && <CircularProgress className="text-white" />}
+            {!isLoading && (
+                <div className="w-full">
+                    <table className="w-full mb-6">
+                        <tbody>
+                            {items.map((item) =>
                                 !item.done && (
-                                    <tr key={item.id}>
-                                        <td className="description">{item.description}</td>
-                                        { /*<td>{JSON.stringify(item, null, 2) }</td>*/}
-                                        <td className="date"><Moment format="MMM Do hh:mm:ss">{item.createdAt}</Moment></td>
-                                        <td><Button variant="contained" className="DoneButton" onClick={(event) => toggleDone(event, item.id, item.description, !item.done)} size="small">
-                                            Done
-                                        </Button></td>
+                                    <tr key={item.id} className="border-b border-gray-700 hover:bg-gray-800">
+                                        <td className="py-2 px-4 w-full">{item.description}</td>
+                                        <td className="py-2 px-4 text-gray-400">
+                                            <Moment format="MMM Do hh:mm:ss">{item.createdAt}</Moment>
+                                        </td>
+                                        <td className="py-2 px-4">
+                                            <Button
+                                                variant="contained"
+                                                className="bg-green-500 text-white hover:bg-green-600"
+                                                onClick={(event) => toggleDone(event, item.id, item.description, !item.done)}
+                                                size="small"
+                                            >
+                                                Done
+                                            </Button>
+                                        </td>
                                     </tr>
-                                )))}
-                        </TableBody>
+                                )
+                            )}
+                        </tbody>
                     </table>
-                    <h2 id="donelist">
-                        Done items
-                    </h2>
-                    <table id="itemlistDone" className="itemlist">
-                        <TableBody>
-                            {items.map(item => (
+                    <h2 className="text-xl font-semibold text-gray-300 mb-2">Done items</h2>
+                    <table className="w-full">
+                        <tbody>
+                            {items.map((item) =>
                                 item.done && (
-
-                                    <tr key={item.id}>
-                                        <td className="description">{item.description}</td>
-                                        <td className="date"><Moment format="MMM Do hh:mm:ss">{item.createdAt}</Moment></td>
-                                        <td><Button variant="contained" className="DoneButton" onClick={(event) => toggleDone(event, item.id, item.description, !item.done)} size="small">
-                                            Undo
-                                        </Button></td>
-                                        <td><Button startIcon={<DeleteIcon />} variant="contained" className="DeleteButton" onClick={() => deleteItem(item.id)} size="small">
-                                            Delete
-                                        </Button></td>
+                                    <tr key={item.id} className="border-b border-gray-700 hover:bg-gray-800">
+                                        <td className="py-2 px-4 w-full">{item.description}</td>
+                                        <td className="py-2 px-4 text-gray-400">
+                                            <Moment format="MMM Do hh:mm:ss">{item.createdAt}</Moment>
+                                        </td>
+                                        <td className="py-2 px-4">
+                                            <Button
+                                                variant="contained"
+                                                className="bg-yellow-500 text-white hover:bg-yellow-600"
+                                                onClick={(event) => toggleDone(event, item.id, item.description, !item.done)}
+                                                size="small"
+                                            >
+                                                Undo
+                                            </Button>
+                                        </td>
+                                        <td className="py-2 px-4">
+                                            <Button
+                                                startIcon={<DeleteIcon />}
+                                                variant="contained"
+                                                className="bg-red-500 text-white hover:bg-red-600"
+                                                onClick={() => deleteItem(item.id)}
+                                                size="small"
+                                            >
+                                                Delete
+                                            </Button>
+                                        </td>
                                     </tr>
-                                )))}
-                        </TableBody>
+                                )
+                            )}
+                        </tbody>
                     </table>
                 </div>
-            }
-
+            )}
         </div>
     );
 }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import API_SIGNUP from '../../API';
 import '../../css/Global.css';
 
 const SignupScreen = () => {
@@ -9,15 +10,13 @@ const SignupScreen = () => {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const navigate = useNavigate();
 
     const handlePhoneChange = (event) => {
         let input = event.target.value.replace(/\D/g, '');
-        if (input.startsWith('52')) {
-            input = input.substring(2);
-        }
-        if (input.length > 10) {
-            input = input.substring(0, 10);
-        }
+        if (input.startsWith('52')) input = input.substring(2);
+        if (input.length > 10) input = input.substring(0, 10);
         setPhone(input);
     };
 
@@ -27,27 +26,58 @@ const SignupScreen = () => {
         return `+52-${input.substring(0, 3)}-${input.substring(3, 6)}-${input.substring(6, 10)}`;
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
+        setLoading(true);
+
         if (password !== confirmPassword) {
             setError('Passwords do not match!');
+            setLoading(false);
             return;
         }
+
         if (phone.length !== 10) {
             setError('Phone number must be exactly 10 digits.');
+            setLoading(false);
             return;
         }
-        setError('');
-        console.log('Email:', email);
-        console.log('Full Name:', fullname);
-        console.log('Phone:', `+52${phone}`);
-        console.log('Password:', password);
+
+        const userData = {
+            nombre: fullname,
+            correo: email,
+            telefono: `+52${phone}`,
+            contrasena: password,
+            rolUsuario: 'USER',
+            esAdmin: 0,
+            equipoID: null
+        };
+
+        try {
+            navigate('/todolist');
+            const response = await fetch(API_SIGNUP, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(userData)
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Error al registrar usuario');
+
+            console.log('✅ Usuario registrado:', data);
+            setLoading(false);
+
+        } catch (error) {
+            console.error('❌ Error en el registro:', error.message);
+            setError(error.message);
+            setLoading(false);
+        }
     };
 
     return (
         <div className="w-full min-h-screen flex items-center justify-center bg-gray-100">
             <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg w-96 shadow-md">
-                <h1 className="mb-1 text-2xl font-semibold text-gray-900 text-center">Welcome random!</h1>
+                <h1 className="mb-1 text-2xl font-semibold text-gray-900 text-center">Welcome rando!</h1>
                 <p className="mb-6 text-gray-600 text-center">Enter your details to register</p>
 
                 <label className="block mb-2 font-semibold text-gray-700" htmlFor="email">Email address</label>
@@ -67,7 +97,9 @@ const SignupScreen = () => {
 
                 {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
-                <button className="bg-blue-500 text-white px-4 py-2 rounded-md w-full hover:bg-blue-600 transition duration-200" type="submit">Register</button>
+                <button className="bg-blue-500 text-white px-4 py-2 rounded-md w-full hover:bg-blue-600 transition duration-200" type="submit" disabled={loading}>
+                    {loading ? 'Registering...' : 'Register'}
+                </button>
 
                 <div className="mt-4 text-center">
                     <p>Already have an account? <Link className="text-blue-500 hover:underline" to="/">Log in</Link></p>

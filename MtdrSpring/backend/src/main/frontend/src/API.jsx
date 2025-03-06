@@ -1,2 +1,4 @@
 const API_LIST = '/todolist';
-export default API_LIST;
+const API_SIGNUP = '/signup'; // Nuevo endpoint para registrar usuarios
+export default { API_LIST, API_SIGNUP };
+

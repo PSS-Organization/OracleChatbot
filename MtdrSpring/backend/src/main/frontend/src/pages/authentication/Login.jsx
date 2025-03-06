@@ -1,21 +1,25 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import API_SIGNUP from '../../API';
+import '../../css/Global.css';
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const navigate = useNavigate();
 
     const handleSubmit = (e) => {
         e.preventDefault();
         console.log('Email:', email);
         console.log('Password:', password);
+        navigate('/todolist');
     };
 
     return (
         <div className="w-full min-h-screen flex items-center justify-center bg-gray-100">
             <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg w-80 shadow-md">
                 <h1 className="mb-1 text-2xl font-semibold text-gray-900 text-center">Welcome back</h1>
-                <p className="mb-6 text-gray-600">Please enter your details to sign in</p>
+                <p className="mb-6 text-gray-600 text-center">Please enter your details to sign in</p>
 
                 <label className="block mb-2 font-semibold text-gray-700" htmlFor="email">Email address</label>
                 <input

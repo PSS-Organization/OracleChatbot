@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import API_SIGNUP from '../../API';
+import { API_SIGNUP } from '../../API';
 import '../../css/Global.css';
 
 const SignupScreen = () => {

@@ -26,7 +26,7 @@ const Login = () => {
                 localStorage.setItem('user', JSON.stringify(response.data.usuario));
     
              
-                navigate('/todolist');
+                navigate('/home');
             } else {
                
                 setError(response.data.message || 'Invalid credentials');

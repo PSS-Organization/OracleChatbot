@@ -187,6 +187,7 @@ function TodoList() {
                                             <Button
                                                 variant="contained"
                                                 className="bg-green-500 text-white hover:bg-green-600"
+                                                color="success"
                                                 onClick={(event) => toggleDone(event, item.id, item.description, !item.done)}
                                                 size="small"
                                             >

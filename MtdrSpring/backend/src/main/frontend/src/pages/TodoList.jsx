@@ -224,6 +224,7 @@ function TodoList() {
                                                 variant="contained"
                                                 className="bg-red-500 text-white hover:bg-red-600"
                                                 onClick={() => deleteItem(item.id)}
+                                                color="error"
                                                 size="small"
                                             >
                                                 Delete

@@ -16,19 +16,15 @@ const Login = () => {
     
         try {
             // Send login request to backend
-            const response = await axios.post('http://localhost:8080/usuarios/login', { 
+            const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/usuarios/login`, { 
                 email, 
                 password 
             });
     
             if (response.data.success) {
-        
                 localStorage.setItem('user', JSON.stringify(response.data.usuario));
-    
-             
                 navigate('/todolist');
             } else {
-               
                 setError(response.data.message || 'Invalid credentials');
             }
         } catch (err) {
@@ -41,6 +37,7 @@ const Login = () => {
             <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg w-80 shadow-md">
                 <h1 className="mb-1 text-2xl font-semibold text-gray-900 text-center">Welcome back</h1>
                 <p className="mb-6 text-gray-600 text-center">Please enter your details to sign in</p>
+                <h1>Valentino Prueba</h1>
 
                 {error && <p className="text-red-500 text-center">{error}</p>}
 

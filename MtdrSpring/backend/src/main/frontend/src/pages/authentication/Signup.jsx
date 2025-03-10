@@ -30,19 +30,19 @@ const SignupScreen = () => {
         e.preventDefault();
         setError('');
         setLoading(true);
-
+    
         if (password !== confirmPassword) {
             setError('Passwords do not match!');
             setLoading(false);
             return;
         }
-
+    
         if (phone.length !== 10) {
             setError('Phone number must be exactly 10 digits.');
             setLoading(false);
             return;
         }
-
+    
         const userData = {
             nombre: fullname,
             correo: email,
@@ -52,27 +52,34 @@ const SignupScreen = () => {
             esAdmin: 0,
             equipoID: null
         };
-
+    
         try {
-            navigate('/home');
             const response = await fetch(API_SIGNUP, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(userData)
             });
-
+    
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Error al registrar usuario');
-
+    
             console.log('✅ Usuario registrado:', data);
-            setLoading(false);
 
+            // Guarda la información del usuario en localStorage
+            localStorage.setItem('user', JSON.stringify(data.usuario));
+
+            setLoading(false);
+    
+            // 🚀 Solo aquí rediriges al usuario si el registro fue exitoso
+            navigate('/home');
+    
         } catch (error) {
             console.error('❌ Error en el registro:', error.message);
             setError(error.message);
             setLoading(false);
         }
     };
+    
 
     return (
         <div className="w-full min-h-screen flex items-center justify-center bg-gray-100">

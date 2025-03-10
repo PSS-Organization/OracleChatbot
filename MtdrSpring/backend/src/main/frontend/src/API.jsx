@@ -16,9 +16,10 @@
 // Copy from the endpoint from the API Gateway Deployment
 // Example: const API_LIST = 'https://di2eyonlz5s7kmuektcddaw5zq.apigateway.<region>.oci.customer-oci.com/todolist';
 // const API_LIST = 'https://di2eyonlz5s7kmuektcddaw5zq.apigateway.eu-frankfurt-1.oci.customer-oci.com/todolist';
+import { getBackendUrl } from "./utils/getBackendUrl";
 
 export const API_LIST = '/todolist';
-export const API_SIGNUP = '/signup'; // Nuevo endpoint para registrar usuarios
+export const API_SIGNUP = `${await getBackendUrl()}/usuarios/signup`; // Ahora usa la URL correcta
 export const API_USERS = '/usuarios/all';
 
 // import { API_LIST, API_USERS } from './API.jsx';

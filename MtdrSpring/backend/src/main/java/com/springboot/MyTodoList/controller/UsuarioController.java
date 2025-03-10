@@ -27,25 +27,33 @@ public class UsuarioController {
     public List<Usuario> getAllUsuarios() {
         return usuarioService.getAllUsuarios();
     }
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> credentials) {
-        String correo = credentials.get("email");  // Get email from request
-        String contrasena = credentials.get("password"); // Get password from request
-
+        String correo = credentials.get("email");
+        String contrasena = credentials.get("password");
         Optional<Usuario> usuario = (Optional<Usuario>) usuarioService.authenticate(correo, contrasena);
 
         if (usuario.isPresent()) {
-            // ✅ If login is successful, return user data
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Login successful");
-            response.put("usuario", usuario.get()); // ⚠️ Exclude password if necessary
+            response.put("usuario", usuario.get());
 
             return ResponseEntity.ok(response);
         } else {
-            // ❌ If login fails, return 401 Unauthorized
             return ResponseEntity.status(401).body(Map.of("success", false, "message", "Invalid email or password"));
         }
     }
 
+    // 🔹 Nuevo endpoint para registrar usuarios
+    @PostMapping("/signup")
+    public ResponseEntity<?> signup(@RequestBody Usuario usuario) {
+        try {
+            Usuario nuevoUsuario = usuarioService.createUsuario(usuario);
+            return ResponseEntity.ok(Map.of("success", true, "message", "User registered successfully", "usuario", nuevoUsuario));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
 }

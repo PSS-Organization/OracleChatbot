@@ -54,7 +54,7 @@ const SignupScreen = () => {
         };
 
         try {
-            navigate('/todolist');
+            navigate('/home');
             const response = await fetch(API_SIGNUP, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

@@ -1,7 +1,7 @@
 package com.springboot.MyTodoList.config;
 
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,12 +19,18 @@ public class CorsConfig {
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(Collections.singletonList("*")); // Allow all origins
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS", "DELETE", "PATCH"));
-        config.addAllowedHeader("*");
-        config.addExposedHeader("location");
+        // Allow all origins
+        config.setAllowedOrigins(Collections.singletonList("*"));
+        // Allow common HTTP methods
+        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // Allow all headers
+        config.setAllowedHeaders(Collections.singletonList("*"));
+        // Allow credentials
+        config.setAllowCredentials(true);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
+
         return new CorsFilter(source);
     }
 }

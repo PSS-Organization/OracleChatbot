@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { API_SIGNUP } from '../../API';
 import '../../css/Global.css';
 import axios from 'axios'; 
+import { getBackendUrl } from '../../utils/getBackendUrl';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -15,8 +16,11 @@ const Login = () => {
         setError(null); // Clear previous errors
     
         try {
+            // Get the backend URL dynamically
+            const backendUrl = await getBackendUrl();
+
             // Send login request to backend
-            const response = await axios.post('http://localhost:8080/usuarios/login', { 
+            const response = await axios.post(`${backendUrl}/usuarios/login`, { 
                 email, 
                 password 
             });
@@ -40,6 +44,7 @@ const Login = () => {
             <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg w-80 shadow-md">
                 <h1 className="mb-1 text-2xl font-semibold text-gray-900 text-center">Welcome back</h1>
                 <p className="mb-6 text-gray-600 text-center">Please enter your details to sign in</p>
+                <p>Prueba 2 CLASE</p>
 
                 {error && <p className="text-red-500 text-center">{error}</p>}
 

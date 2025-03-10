@@ -169,7 +169,8 @@ function TodoList() {
     return (
         <div className="bg-gray-900 text-white flex flex-col items-center p-6 rounded-lg shadow-lg w-full max-w-3xl mx-auto mt-8">
             <h1 className="text-2xl font-bold mb-4">MY TODO LIST</h1>
-            <NewItem addItem={addItem} isInserting={isInserting} />
+            <NewItem addItem={addItem} isInserting={isInserting} /> {/* COMPONENTE NEW ITEM. ES EL INPUT Y BOTON DE AGREGAR */}
+
             {error && <p className="text-red-500">Error: {error.message}</p>}
             {isLoading && <CircularProgress className="text-white" />}
             {!isLoading && (

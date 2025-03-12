@@ -40,7 +40,7 @@ public class UsuarioController {
             ResponseEntity<Usuario> responseEntity = usuarioService.getUsuarioById(id);
             if (responseEntity.getBody() != null) {
                 Map<String, Object> response = new HashMap<>();
-                response.put("success", true);
+                //response.put("success", true);
                 response.put("usuario", responseEntity.getBody());
                 return ResponseEntity.ok(response);
             }

@@ -26,7 +26,10 @@ public class UsuarioService {
     public ResponseEntity<Usuario> getUsuarioById(Long id) {
         Optional<Usuario> userData = usuarioRepository.findById(id);
         if (userData.isPresent()) {
-            return new ResponseEntity<>(userData.get(), HttpStatus.OK);
+            Usuario usuario = userData.get();
+            // Verifica que el ID esté presente
+            System.out.println("Usuario ID: " + usuario.getUsuarioID()); // Para debugging
+            return new ResponseEntity<>(usuario, HttpStatus.OK);
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
@@ -34,7 +37,7 @@ public class UsuarioService {
 
     // Crear nuevo usuario
     public Usuario createUsuario(Usuario usuario) {
-// Verificar si el usuario ya existe en la base de datos
+        // Verificar si el usuario ya existe en la base de datos
         if (usuarioRepository.findByCorreo(usuario.getCorreo()).isPresent()) {
             throw new RuntimeException("El usuario con correo " + usuario.getCorreo() + " ya existe.");
 

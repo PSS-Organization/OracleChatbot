@@ -35,12 +35,19 @@ public class UsuarioController {
 
     // Obtener usuario por ID
     @GetMapping("/{id}")
-    public ResponseEntity<Usuario> getUsuarioById(@PathVariable Long id) {
+    public ResponseEntity<?> getUsuarioById(@PathVariable Long id) {
         try {
             ResponseEntity<Usuario> responseEntity = usuarioService.getUsuarioById(id);
-            return new ResponseEntity<>(responseEntity.getBody(), HttpStatus.OK);
+            if (responseEntity.getBody() != null) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", true);
+                response.put("usuario", responseEntity.getBody());
+                return ResponseEntity.ok(response);
+            }
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Error al obtener el usuario"));
         }
     }
 

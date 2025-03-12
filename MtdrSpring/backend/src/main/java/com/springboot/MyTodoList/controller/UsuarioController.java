@@ -16,19 +16,25 @@ import org.springframework.web.bind.annotation.RestController;
 import com.springboot.MyTodoList.model.Usuario;
 import com.springboot.MyTodoList.service.UsuarioService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 @RestController
 @RequestMapping("/usuarios")
+@Tag(name = "Usuarios", description = "Endpoints para gestionar usuarios") // 📌 Agregar categoría en Swagger
 public class UsuarioController {
 
     @Autowired
     private UsuarioService usuarioService;
 
     @GetMapping("/all")
+    @Operation(summary = "Obtener todos los usuarios", description = "Devuelve la lista de todos los usuarios en la base de datos")
     public List<Usuario> getAllUsuarios() {
         return usuarioService.getAllUsuarios();
     }
 
     @PostMapping("/login")
+    @Operation(summary = "Autenticar usuario", description = "Verifica las credenciales del usuario y devuelve sus datos si son correctas.")
     public ResponseEntity<?> login(@RequestBody Map<String, String> credentials) {
         String correo = credentials.get("email");
         String contrasena = credentials.get("password");
@@ -48,6 +54,8 @@ public class UsuarioController {
 
     // 🔹 Nuevo endpoint para registrar usuarios
     @PostMapping("/signup")
+    @Operation(summary = "Registrar un nuevo usuario", description = "Registra un usuario en la base de datos")
+
     public ResponseEntity<?> signup(@RequestBody Usuario usuario) {
         try {
             Usuario nuevoUsuario = usuarioService.createUsuario(usuario);

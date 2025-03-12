@@ -13,6 +13,7 @@ public class Usuario {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "USUARIOID") // Asegúrate que coincida exactamente con el nombre en la BD
     private Long usuarioID;
 
     @Column(name = "NOMBRE", nullable = false)
@@ -117,15 +118,15 @@ public class Usuario {
 
     @Override
     public String toString() {
-        return "Usuario{" +
-                "usuarioID=" + usuarioID +
-                ", nombre='" + nombre + '\'' +
-                ", correo='" + correo + '\'' +
-                ", telefono='" + telefono + '\'' +
-                ", contrasena='" + contrasena + '\'' +
-                ", rolUsuario='" + rolUsuario + '\'' +
-                ", esAdmin=" + esAdmin +
-                ", equipoID=" + equipoID +
-                '}';
+        return "Usuario{"
+                + "usuarioID=" + usuarioID
+                + ", nombre='" + nombre + '\''
+                + ", correo='" + correo + '\''
+                + ", telefono='" + telefono + '\''
+                + ", contrasena='" + contrasena + '\''
+                + ", rolUsuario='" + rolUsuario + '\''
+                + ", esAdmin=" + esAdmin
+                + ", equipoID=" + equipoID
+                + '}';
     }
 }

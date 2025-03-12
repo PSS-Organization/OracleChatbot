@@ -44,7 +44,7 @@ const Login = () => {
             <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg w-80 shadow-md">
                 <h1 className="mb-1 text-2xl font-semibold text-gray-900 text-center">Welcome back</h1>
                 <p className="mb-6 text-gray-600 text-center">Please enter your details to sign in</p>
-                <p>Prueba 2 CLASE</p>
+                <p>Prueba S5</p>
 
                 {error && <p className="text-red-500 text-center">{error}</p>}
 
@@ -53,7 +53,7 @@ const Login = () => {
                     className="w-full p-2 mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     id="email"
                     type="email"
-                    placeholder="employee@java.com"
+                    placeholder="employee@oracle.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required

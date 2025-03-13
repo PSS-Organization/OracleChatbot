@@ -197,7 +197,7 @@ public class TareaBotController extends TelegramLongPollingBot {
 
         // Tareas pendientes
         List<Tarea> tareasPendientes = tareas.stream()
-                .filter(tarea -> !tarea.getCompletado())
+                .filter(tarea -> tarea.getCompletado() == 0)
                 .collect(Collectors.toList());
 
         for (Tarea tarea : tareasPendientes) {
@@ -209,7 +209,7 @@ public class TareaBotController extends TelegramLongPollingBot {
 
         // Tareas completadas
         List<Tarea> tareasCompletadas = tareas.stream()
-                .filter(Tarea::getCompletado)
+                .filter(tarea -> tarea.getCompletado() == 1)
                 .collect(Collectors.toList());
 
         for (Tarea tarea : tareasCompletadas) {
@@ -240,7 +240,7 @@ public class TareaBotController extends TelegramLongPollingBot {
 
         // Tareas pendientes
         List<Tarea> tareasPendientes = tareas.stream()
-                .filter(tarea -> !tarea.getCompletado())
+                .filter(tarea -> tarea.getCompletado() == 0)  
                 .collect(Collectors.toList());
 
         if (!tareasPendientes.isEmpty()) {
@@ -259,7 +259,7 @@ public class TareaBotController extends TelegramLongPollingBot {
 
         // Tareas completadas
         List<Tarea> tareasCompletadas = tareas.stream()
-                .filter(Tarea::getCompletado)
+                .filter(tarea -> tarea.getCompletado() == 1)
                 .collect(Collectors.toList());
 
         if (!tareasCompletadas.isEmpty()) {
@@ -378,7 +378,7 @@ public class TareaBotController extends TelegramLongPollingBot {
             Long id = Long.valueOf(messageText.substring(0, messageText.indexOf(BotLabels.DASH.getLabel())));
             Tarea tarea = tareaService.getTareaById(id).getBody();
             if (tarea != null) {
-                tarea.setCompletado(true);
+                tarea.setCompletado(1);
                 tareaService.updateTarea(id, tarea);
                 BotHelper.sendMessageToTelegram(chatId, "Tarea marcada como completada", this);
                 mostrarListaTareas(chatId);
@@ -393,7 +393,7 @@ public class TareaBotController extends TelegramLongPollingBot {
             Long id = Long.valueOf(messageText.substring(0, messageText.indexOf(BotLabels.DASH.getLabel())));
             Tarea tarea = tareaService.getTareaById(id).getBody();
             if (tarea != null) {
-                tarea.setCompletado(false);
+                tarea.setCompletado(0);
                 tareaService.updateTarea(id, tarea);
                 BotHelper.sendMessageToTelegram(chatId, "Tarea marcada como pendiente", this);
                 mostrarListaTareas(chatId);
@@ -434,7 +434,7 @@ public class TareaBotController extends TelegramLongPollingBot {
             tarea.setTareaNombre(nombreTarea);
             tarea.setDescripcion("Creada desde Telegram");
             tarea.setFechaCreacion(OffsetDateTime.now());
-            tarea.setCompletado(false);
+            tarea.setCompletado(0);
             tarea.setPrioridad("BAJA");
 
             tareaService.createTarea(tarea);

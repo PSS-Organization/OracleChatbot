@@ -15,4 +15,14 @@ public interface TareaRepository extends JpaRepository<Tarea, Long> {
     List<Tarea> findBySprintID(Long sprintID);
 
     List<Tarea> findByEstadoID(Long estadoID);
+
+    // Obtener tareas por usuario ordenadas por fecha de entrega
+    List<Tarea> findByUsuarioIDOrderByFechaEntregaAsc(Long usuarioID);
+    
+
+    List<Tarea> findByCompletado(Integer completado);
+
+
+    // Obtener tareas por prioridad
+    List<Tarea> findByPrioridad(String prioridad);
 }

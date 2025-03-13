@@ -19,54 +19,51 @@ public class Tarea {
     @Column(name = "TAREAID")
     private Long tareaID;
 
-    @Column(name = "TAREANOMBRE", length = 100)
+    @Column(name = "TAREANOMBRE", nullable = false, length = 100)
     private String tareaNombre;
 
-    @Column(name = "DESCRIPCION", nullable = false)
     @Lob
+    @Column(name = "DESCRIPCION", nullable = false)
     private String descripcion;
 
-    @Column(name = "FECHAENTREGA")
+    @Column(name = "FECHAENTREGA", nullable = true)
     private OffsetDateTime fechaEntrega;
 
-    @Column(name = "FECHACREACION")
+    @Column(name = "FECHACREACION", nullable = false, updatable = false)
     private OffsetDateTime fechaCreacion;
 
     @Column(name = "COMPLETADO", nullable = false)
-    private Boolean completado;
+    private Integer completado = 0;  // ✅ Usa 0 o 1 en lugar de true/false
 
-    @Column(name = "PRIORIDAD")
-    private String prioridad;
+    @Column(name = "PRIORIDAD", nullable = false)
+    private String prioridad = "BAJA";
 
-    @Column(name = "HORASESTIMADAS")
+    @Column(name = "HORASESTIMADAS", nullable = true)
     private Integer horasEstimadas;
 
-    @Column(name = "HORASREALES")
+    @Column(name = "HORASREALES", nullable = true)
     private Integer horasReales;
 
-    @Column(name = "USUARIOID")
+    @Column(name = "USUARIOID", nullable = true)
     private Long usuarioID;
 
-    @Column(name = "SPRINTID")
+    @Column(name = "SPRINTID", nullable = true)
     private Long sprintID;
 
-    @Column(name = "ESTADOID")
+    @Column(name = "ESTADOID", nullable = true)
     private Long estadoID;
 
-    // Constructor vacío
-    public Tarea() {
-    }
+    // 🔽 Constructor vacío
+    public Tarea() {}
 
-    // Constructor completo
-    public Tarea(String tareaNombre, String descripcion, OffsetDateTime fechaEntrega,
-            Boolean completado, String prioridad, Integer horasEstimadas,
-            Integer horasReales, Long usuarioID, Long sprintID, Long estadoID) {
+    // 🔽 Constructor con parámetros
+    public Tarea(String tareaNombre, String descripcion, OffsetDateTime fechaEntrega, Integer completado, String prioridad, Integer horasEstimadas, Integer horasReales, Long usuarioID, Long sprintID, Long estadoID) {
         this.tareaNombre = tareaNombre;
         this.descripcion = descripcion;
         this.fechaEntrega = fechaEntrega;
-        this.fechaCreacion = OffsetDateTime.now();
-        this.completado = completado;
-        this.prioridad = prioridad;
+        this.fechaCreacion = OffsetDateTime.now(); // ✅ Se genera automáticamente
+        this.completado = completado != null ? completado : 0;
+        this.prioridad = prioridad != null ? prioridad : "BAJA";
         this.horasEstimadas = horasEstimadas;
         this.horasReales = horasReales;
         this.usuarioID = usuarioID;
@@ -74,118 +71,58 @@ public class Tarea {
         this.estadoID = estadoID;
     }
 
-    // Getters y Setters
-    public Long getTareaID() {
-        return tareaID;
-    }
+    // 🔽 Getters y Setters
+    public Long getTareaID() { return tareaID; }
+    public void setTareaID(Long tareaID) { this.tareaID = tareaID; }
 
-    public void setTareaID(Long tareaID) {
-        this.tareaID = tareaID;
-    }
+    public String getTareaNombre() { return tareaNombre; }
+    public void setTareaNombre(String tareaNombre) { this.tareaNombre = tareaNombre; }
 
-    public String getTareaNombre() {
-        return tareaNombre;
-    }
+    public String getDescripcion() { return descripcion; }
+    public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
 
-    public void setTareaNombre(String tareaNombre) {
-        this.tareaNombre = tareaNombre;
-    }
+    public OffsetDateTime getFechaEntrega() { return fechaEntrega; }
+    public void setFechaEntrega(OffsetDateTime fechaEntrega) { this.fechaEntrega = fechaEntrega; }
 
-    public String getDescripcion() {
-        return descripcion;
-    }
+    public OffsetDateTime getFechaCreacion() { return fechaCreacion; }
+    public void setFechaCreacion(OffsetDateTime fechaCreacion) { this.fechaCreacion = fechaCreacion; }
 
-    public void setDescripcion(String descripcion) {
-        this.descripcion = descripcion;
-    }
+    public Integer getCompletado() { return completado; }
+    public void setCompletado(Integer completado) { this.completado = completado; }
 
-    public OffsetDateTime getFechaEntrega() {
-        return fechaEntrega;
-    }
+    public String getPrioridad() { return prioridad; }
+    public void setPrioridad(String prioridad) { this.prioridad = prioridad; }
 
-    public void setFechaEntrega(OffsetDateTime fechaEntrega) {
-        this.fechaEntrega = fechaEntrega;
-    }
+    public Integer getHorasEstimadas() { return horasEstimadas; }
+    public void setHorasEstimadas(Integer horasEstimadas) { this.horasEstimadas = horasEstimadas; }
 
-    public OffsetDateTime getFechaCreacion() {
-        return fechaCreacion;
-    }
+    public Integer getHorasReales() { return horasReales; }
+    public void setHorasReales(Integer horasReales) { this.horasReales = horasReales; }
 
-    public void setFechaCreacion(OffsetDateTime fechaCreacion) {
-        this.fechaCreacion = fechaCreacion;
-    }
+    public Long getUsuarioID() { return usuarioID; }
+    public void setUsuarioID(Long usuarioID) { this.usuarioID = usuarioID; }
 
-    public Boolean getCompletado() {
-        return completado;
-    }
+    public Long getSprintID() { return sprintID; }
+    public void setSprintID(Long sprintID) { this.sprintID = sprintID; }
 
-    public void setCompletado(Boolean completado) {
-        this.completado = completado;
-    }
-
-    public String getPrioridad() {
-        return prioridad;
-    }
-
-    public void setPrioridad(String prioridad) {
-        this.prioridad = prioridad;
-    }
-
-    public Integer getHorasEstimadas() {
-        return horasEstimadas;
-    }
-
-    public void setHorasEstimadas(Integer horasEstimadas) {
-        this.horasEstimadas = horasEstimadas;
-    }
-
-    public Integer getHorasReales() {
-        return horasReales;
-    }
-
-    public void setHorasReales(Integer horasReales) {
-        this.horasReales = horasReales;
-    }
-
-    public Long getUsuarioID() {
-        return usuarioID;
-    }
-
-    public void setUsuarioID(Long usuarioID) {
-        this.usuarioID = usuarioID;
-    }
-
-    public Long getSprintID() {
-        return sprintID;
-    }
-
-    public void setSprintID(Long sprintID) {
-        this.sprintID = sprintID;
-    }
-
-    public Long getEstadoID() {
-        return estadoID;
-    }
-
-    public void setEstadoID(Long estadoID) {
-        this.estadoID = estadoID;
-    }
+    public Long getEstadoID() { return estadoID; }
+    public void setEstadoID(Long estadoID) { this.estadoID = estadoID; }
 
     @Override
     public String toString() {
-        return "Tarea{"
-                + "tareaID=" + tareaID
-                + ", tareaNombre='" + tareaNombre + '\''
-                + ", descripcion='" + descripcion + '\''
-                + ", fechaEntrega=" + fechaEntrega
-                + ", fechaCreacion=" + fechaCreacion
-                + ", completado=" + completado
-                + ", prioridad='" + prioridad + '\''
-                + ", horasEstimadas=" + horasEstimadas
-                + ", horasReales=" + horasReales
-                + ", usuarioID=" + usuarioID
-                + ", sprintID=" + sprintID
-                + ", estadoID=" + estadoID
-                + '}';
+        return "Tarea{" +
+                "tareaID=" + tareaID +
+                ", tareaNombre='" + tareaNombre + '\'' +
+                ", descripcion='" + descripcion + '\'' +
+                ", fechaEntrega=" + fechaEntrega +
+                ", fechaCreacion=" + fechaCreacion +
+                ", completado=" + completado +
+                ", prioridad='" + prioridad + '\'' +
+                ", horasEstimadas=" + horasEstimadas +
+                ", horasReales=" + horasReales +
+                ", usuarioID=" + usuarioID +
+                ", sprintID=" + sprintID +
+                ", estadoID=" + estadoID +
+                '}';
     }
 }

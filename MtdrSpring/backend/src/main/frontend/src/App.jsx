@@ -2,7 +2,9 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/authentication/Login";
 import Signup from "./pages/authentication/Signup";
 import TodoList from "./pages/TodoList";
+import Board from "./pages/board/Board";
 
+//import Sidebar from "./components/SideBar/SideBar";
 
 function App() {
   return (
@@ -12,6 +14,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/home" element={<TodoList />} />
+      <Route path="/board" element={<Board />} />
 
       {/* Add other routes as needed */}
     </Routes>

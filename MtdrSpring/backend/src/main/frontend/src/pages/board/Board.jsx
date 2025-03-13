@@ -63,14 +63,14 @@ const Board = () => {
     if (error) return <p className="text-center text-red-500">Error: {error}</p>;
 
     return (
-        <div className="flex h-screen">
+        <div className="flex min-h-screen bg-gray-100">
             <Sidebar />
-            <div className="flex-1 flex flex-col bg-gray-100">
+            <div className="flex-1 flex flex-col w-full">
                 <Header />
-                <div className="p-6">
+                <div className="p-4 lg:p-6 mt-16 lg:mt-0 overflow-auto"> 
                     <h1 className="text-2xl font-bold mb-4">Task Board</h1>
                     <p className="text-gray-500 mb-6">{tasks.length} tasks in progress</p>
-                    <div className="grid grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                         {columns.map((column) => (
                             <div key={column.status} className="bg-white p-4 rounded-lg shadow-md">
                                 <div className="flex justify-between items-center mb-4">
@@ -80,9 +80,12 @@ const Board = () => {
                                     </span>
                                 </div>
                                 <div className="space-y-4">
-                                    {tasks.filter(task => task.status === column.status).map(task => (
-                                        <TaskCard key={task.id} task={task} />
-                                    ))}
+                                    {tasks
+                                        .filter(task => task.status === column.status)
+                                        .map(task => (
+                                            <TaskCard key={task.id} task={task} />
+                                        ))
+                                    }
                                 </div>
                             </div>
                         ))}

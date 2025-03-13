@@ -71,7 +71,7 @@ const SignupScreen = () => {
             setLoading(false);
     
             // 🚀 Solo aquí rediriges al usuario si el registro fue exitoso
-            navigate('/home');
+            navigate('/board');
     
         } catch (error) {
             console.error('❌ Error en el registro:', error.message);

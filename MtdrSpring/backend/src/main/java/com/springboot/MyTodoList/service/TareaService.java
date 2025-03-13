@@ -31,16 +31,22 @@ public class TareaService {
     }
 
     public Tarea createTarea(Tarea tarea) {
-        tarea.setFechaCreacion(OffsetDateTime.now());
+        // ✅ Asignar valores por defecto solo si no están presentes
+        if (tarea.getFechaCreacion() == null) {
+            tarea.setFechaCreacion(OffsetDateTime.now()); 
+        }
         if (tarea.getCompletado() == null) {
-            tarea.setCompletado(false);
+            tarea.setCompletado(0); // 0 = false en base de datos
         }
         if (tarea.getPrioridad() == null) {
             tarea.setPrioridad("BAJA");
         }
-        return tareaRepository.save(tarea);
+    
+        System.out.println("✅ Guardando tarea en BD: " + tarea.toString()); 
+    
+        return tareaRepository.save(tarea);  // ✅ Devuelve solo la tarea creada
     }
-
+ 
     public Tarea updateTarea(Long id, Tarea tarea) {
         Optional<Tarea> tareaData = tareaRepository.findById(id);
         if (tareaData.isPresent()) {

@@ -49,13 +49,26 @@ public class TareaController {
     @PostMapping
     public ResponseEntity<?> createTarea(@RequestBody Tarea tarea) {
         try {
+            System.out.println("📌 Recibiendo solicitud para crear tarea: " + tarea.toString());
+    
+            // ✅ Validar que los campos esenciales no sean nulos
+            if (tarea.getTareaNombre() == null || tarea.getDescripcion() == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "El nombre de la tarea y la descripción son obligatorios."
+                ));
+            }
+    
+            // ✅ Dejar que `TareaService` maneje los valores por defecto
             Tarea nuevaTarea = tareaService.createTarea(tarea);
+    
             return ResponseEntity.ok().body(Map.of(
                     "success", true,
                     "message", "Tarea creada exitosamente",
                     "tarea", nuevaTarea
             ));
         } catch (Exception e) {
+            System.err.println("❌ Error al crear la tarea: " + e.getMessage());
             return ResponseEntity.badRequest().body(Map.of(
                     "success", false,
                     "message", "Error al crear la tarea: " + e.getMessage()

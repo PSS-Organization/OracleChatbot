@@ -22,6 +22,7 @@ export const API_LIST = '/todolist';
 export const API_SIGNUP = `${await getBackendUrl()}/usuarios/signup`; // Ahora usa la URL correcta
 export const API_USERS = '/usuarios/all';
 
+export const API_TAREAS = `${await getBackendUrl()}/tareas`;  
 // import { API_LIST, API_USERS } from './API.jsx';
 
 // // Usar API_LIST y API_USERS en tu código

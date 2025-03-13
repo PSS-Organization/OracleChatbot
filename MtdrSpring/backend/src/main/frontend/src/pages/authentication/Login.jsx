@@ -29,7 +29,7 @@ const Login = () => {
         
                 localStorage.setItem('user', JSON.stringify(response.data.usuario));
     
-                navigate('/home');
+                navigate('/board');
             } else {
                
                 setError(response.data.message || 'Invalid credentials');

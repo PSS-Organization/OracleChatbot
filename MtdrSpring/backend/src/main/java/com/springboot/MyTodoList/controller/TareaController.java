@@ -117,6 +117,38 @@ public class TareaController {
         }
     }
 
+    // 🔽 DTO para actualizar el estado de una tarea
+    public static class EstadoUpdateDTO {
+        private Long estadoID;
+        public Long getEstadoID() { return estadoID; }
+        public void setEstadoID(Long estadoID) { this.estadoID = estadoID; }
+    }
+
+    @PutMapping("/{id}/estado")
+    public ResponseEntity<?> actualizarEstadoTarea(@PathVariable Long id, @RequestBody EstadoUpdateDTO estadoUpdate) {
+    try {
+        Tarea tarea = tareaService.getTareaById(id).getBody();
+        if (tarea == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("success", false, "message", "Tarea no encontrada"));
+        }
+
+        tarea.setEstadoID(estadoUpdate.getEstadoID());
+        tareaService.updateTarea(id, tarea);  // o directamente save si ya tienes persistencia
+
+        return ResponseEntity.ok(Map.of(
+            "success", true,
+            "message", "Estado actualizado exitosamente",
+            "estadoID", estadoUpdate.getEstadoID()
+        ));
+    } catch (Exception e) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+            "success", false,
+            "message", "Error al actualizar estado: " + e.getMessage()
+        ));
+    }
+}
+
+
     @GetMapping("/usuario/{usuarioID}")
     public ResponseEntity<List<Tarea>> getTareasByUsuario(@PathVariable Long usuarioID) {
         List<Tarea> tareas = tareaService.getTareasByUsuario(usuarioID);

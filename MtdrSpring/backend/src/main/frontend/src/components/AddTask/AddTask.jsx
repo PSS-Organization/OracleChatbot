@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useState,useEffect } from "react";
 import { API_TAREAS } from "../../API";
+import { API_SPRINTS } from "../../API";
+import { getBackendUrl } from "../../utils/getBackendUrl";
 
 const AddTask = ({ onAddComplete }) => {
     const [taskName, setTaskName] = useState("");
@@ -12,6 +14,40 @@ const AddTask = ({ onAddComplete }) => {
     const [error, setError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
     const [loading, setLoading] = useState(false);
+
+    // cargar usuarios y sprints en formulario
+    const [usuarios, setUsuarios] = useState([]);
+    useEffect(() => {
+        const fetchUsuarios = async () => {
+          try {
+            const backendUrl = await getBackendUrl();
+            const response = await fetch(`${backendUrl}/usuarios/all`);
+            if (!response.ok) throw new Error("Error fetching users");
+            const data = await response.json();
+            setUsuarios(data);
+          } catch (err) {
+            console.error("Error loading users:", err.message);
+          }
+        };
+      
+        fetchUsuarios();
+      }, []);
+    
+    const [sprints, setSprints] = useState([]);
+    useEffect(() => {
+        const fetchSprints = async () => {
+          try {
+            const response = await fetch(API_SPRINTS);
+            if (!response.ok) throw new Error("Error fetching sprints");
+            const data = await response.json();
+            setSprints(data);
+          } catch (err) {
+            console.error("Error loading sprints:", err.message);
+          }
+        };
+      
+        fetchSprints();
+      }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -111,22 +147,32 @@ const AddTask = ({ onAddComplete }) => {
                     className="p-2 border rounded"
                 />
 
-                <input
-                    type="number"
-                    placeholder="User ID"
-                    value={userID}
-                    onChange={(e) => setUserID(e.target.value)}
-                    className="p-2 border rounded"
-                    required
-                />
+                <select
+                value={userID}
+                onChange={(e) => setUserID(e.target.value)}
+                className="p-2 border rounded"
+                >
+                <option value="">Select User</option>
+                {usuarios.map((user) => (
+                <option key={user.usuarioID} value={user.usuarioID}>
+                    {user.usuarioID} - {user.nombre}
+                </option>
+                ))}
+                </select>
 
-                <input
-                    type="number"
-                    placeholder="Sprint ID"
-                    value={sprintID}
-                    onChange={(e) => setSprintID(e.target.value)}
-                    className="p-2 border rounded"
-                />
+
+                <select
+                value={sprintID}
+                onChange={(e) => setSprintID(e.target.value)}
+                className="p-2 border rounded"
+                >
+                <option value="">Select Sprint</option>
+                {sprints.map((sprint) => (
+                    <option key={sprint.sprintID} value={sprint.sprintID}>
+                    {sprint.sprintID} - {sprint.nombreSprint}
+                    </option>
+                ))}
+                </select>
 
                 <button
                     type="submit"

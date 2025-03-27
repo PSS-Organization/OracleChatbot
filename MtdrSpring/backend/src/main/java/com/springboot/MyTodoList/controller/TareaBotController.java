@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -19,8 +20,11 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRem
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import com.springboot.MyTodoList.model.Estado;
+import com.springboot.MyTodoList.model.Sprint;
 import com.springboot.MyTodoList.model.Tarea;
 import com.springboot.MyTodoList.model.TareaCreationState;
+import com.springboot.MyTodoList.model.Usuario;
 import com.springboot.MyTodoList.service.TareaService;
 import com.springboot.MyTodoList.util.BotCommands;
 import com.springboot.MyTodoList.util.BotHelper;
@@ -387,8 +391,9 @@ public class TareaBotController extends TelegramLongPollingBot {
     private void marcarTareaComoCompletada(String messageText, long chatId) {
         try {
             Long id = Long.valueOf(messageText.substring(0, messageText.indexOf(BotLabels.DASH.getLabel())));
-            Tarea tarea = tareaService.getTareaById(id).getBody();
-            if (tarea != null) {
+            ResponseEntity<Tarea> response = tareaService.getTareaById(id);
+            if (response.getBody() != null) {
+                Tarea tarea = response.getBody();
                 tarea.setCompletado(1);
                 tareaService.updateTarea(id, tarea);
                 BotHelper.sendMessageToTelegram(chatId, "Tarea marcada como completada", this);
@@ -402,8 +407,9 @@ public class TareaBotController extends TelegramLongPollingBot {
     private void desmarcarTareaComoCompletada(String messageText, long chatId) {
         try {
             Long id = Long.valueOf(messageText.substring(0, messageText.indexOf(BotLabels.DASH.getLabel())));
-            Tarea tarea = tareaService.getTareaById(id).getBody();
-            if (tarea != null) {
+            ResponseEntity<Tarea> response = tareaService.getTareaById(id);
+            if (response.getBody() != null) {
+                Tarea tarea = response.getBody();
                 tarea.setCompletado(0);
                 tareaService.updateTarea(id, tarea);
                 BotHelper.sendMessageToTelegram(chatId, "Tarea marcada como pendiente", this);
@@ -453,25 +459,7 @@ public class TareaBotController extends TelegramLongPollingBot {
             case "DESCRIPCION":
                 state.getTarea().setDescripcion(messageText);
                 state.setCurrentField("PRIORIDAD");
-                SendMessage prioridadMsg = new SendMessage();
-                prioridadMsg.setChatId(chatId);
-                prioridadMsg.setText("⚡ Selecciona la prioridad:");
-
-                ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
-                List<KeyboardRow> keyboard = new ArrayList<>();
-                KeyboardRow row = new KeyboardRow();
-                row.add("BAJA");
-                row.add("MEDIA");
-                row.add("ALTA");
-                keyboard.add(row);
-                keyboardMarkup.setKeyboard(keyboard);
-                prioridadMsg.setReplyMarkup(keyboardMarkup);
-
-                try {
-                    execute(prioridadMsg);
-                } catch (TelegramApiException e) {
-                    logger.error("Error al enviar opciones de prioridad", e);
-                }
+                mostrarOpcionesPrioridad(chatId);
                 break;
 
             case "PRIORIDAD":
@@ -480,45 +468,220 @@ public class TareaBotController extends TelegramLongPollingBot {
                     return;
                 }
                 state.getTarea().setPrioridad(messageText);
-                state.setCurrentField("HORAS_ESTIMADAS");
-                sendMessage(chatId, "⏱️ Ingresa las horas estimadas (número):");
+                state.setCurrentField("USUARIO");
+                mostrarOpcionesUsuarios(chatId);
+                break;
+
+            case "USUARIO":
+                try {
+                    Long usuarioId = Long.parseLong(messageText.split("-")[0].trim());
+                    state.getTarea().setUsuarioID(usuarioId);
+                    state.setCurrentField("SPRINT");
+                    mostrarOpcionesSprints(chatId);
+                } catch (NumberFormatException e) {
+                    sendMessage(chatId, "❌ Por favor, selecciona un usuario válido de la lista");
+                }
+                break;
+
+            case "SPRINT":
+                try {
+                    // Validar que el mensaje tenga el formato correcto
+                    if (!messageText.contains("-")) {
+                        sendMessage(chatId, "❌ Por favor, selecciona un sprint válido de la lista");
+                        return;
+                    }
+                    Long sprintId = Long.parseLong(messageText.split("-")[0].trim());
+                    state.getTarea().setSprintID(sprintId);
+                    state.setCurrentField("ESTADO");
+                    mostrarOpcionesEstados(chatId);
+                } catch (NumberFormatException e) {
+                    logger.error("Error al procesar ID del sprint: " + messageText, e);
+                    sendMessage(chatId, "❌ Por favor, selecciona un sprint válido de la lista");
+                }
+                break;
+
+            case "ESTADO":
+                try {
+                    if (!messageText.contains("-")) {
+                        sendMessage(chatId, "❌ Por favor, selecciona un estado válido de la lista");
+                        return;
+                    }
+                    Long estadoId = Long.parseLong(messageText.split("-")[0].trim());
+                    state.getTarea().setEstadoID(estadoId);
+                    state.setCurrentField("HORAS_ESTIMADAS");
+                    sendMessage(chatId, "⏱️ Ingresa las horas estimadas (número entero):");
+                } catch (NumberFormatException e) {
+                    logger.error("Error al procesar ID del estado: " + messageText, e);
+                    sendMessage(chatId, "❌ Por favor, selecciona un estado válido de la lista");
+                }
                 break;
 
             case "HORAS_ESTIMADAS":
                 try {
-                    state.getTarea().setHorasEstimadas(Integer.parseInt(messageText));
+                    int horas = Integer.parseInt(messageText.trim());
+                    if (horas <= 0) {
+                        sendMessage(chatId, "❌ Las horas estimadas deben ser mayores a 0");
+                        return;
+                    }
+                    state.getTarea().setHorasEstimadas(horas);
                     state.setCurrentField("FECHA_ENTREGA");
                     sendMessage(chatId, "📅 Ingresa la fecha de entrega (formato: DD/MM/YYYY):");
                 } catch (NumberFormatException e) {
-                    sendMessage(chatId, "❌ Por favor, ingresa un número válido para las horas estimadas");
+                    sendMessage(chatId, "❌ Por favor, ingresa solo números para las horas estimadas");
                 }
                 break;
 
             case "FECHA_ENTREGA":
                 try {
                     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-                    LocalDate fecha = LocalDate.parse(messageText, formatter);
+                    LocalDate fecha = LocalDate.parse(messageText.trim(), formatter);
+                    LocalDate hoy = LocalDate.now();
+
+                    if (fecha.isBefore(hoy)) {
+                        sendMessage(chatId, "❌ La fecha de entrega no puede ser anterior a hoy");
+                        return;
+                    }
+
                     state.getTarea().setFechaEntrega(fecha.atStartOfDay().atOffset(ZoneOffset.UTC));
                     finalizarCreacionTarea(state);
                 } catch (DateTimeParseException e) {
-                    sendMessage(chatId, "❌ Formato de fecha inválido. Usa DD/MM/YYYY");
+                    sendMessage(chatId, "❌ Formato de fecha inválido. Usa DD/MM/YYYY (ejemplo: 31/12/2025)");
                 }
                 break;
         }
     }
 
-    private void finalizarCreacionTarea(TareaCreationState state) {
-        Tarea tarea = state.getTarea();
-        tarea.setFechaCreacion(OffsetDateTime.now());
-        tarea.setCompletado(0);
+    private void mostrarOpcionesPrioridad(long chatId) {
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText("⚡ Selecciona la prioridad:");
+
+        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+        List<KeyboardRow> keyboard = new ArrayList<>();
+
+        String[] prioridades = {"BAJA", "MEDIA", "ALTA"};
+        for (String prioridad : prioridades) {
+            KeyboardRow row = new KeyboardRow();
+            row.add(prioridad);
+            keyboard.add(row);
+        }
+
+        keyboardMarkup.setKeyboard(keyboard);
+        message.setReplyMarkup(keyboardMarkup);
 
         try {
-            tareaService.createTarea(tarea);
-            sendMessage(state.getChatId(), "✅ Tarea creada exitosamente!");
-            mostrarListaTareas(state.getChatId());
+            execute(message);
+        } catch (TelegramApiException e) {
+            logger.error("Error al mostrar opciones de prioridad", e);
+        }
+    }
+
+    private void mostrarOpcionesUsuarios(long chatId) {
+        List<Usuario> usuarios = tareaService.getAllUsuarios();
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText("👤 Selecciona el usuario asignado:");
+
+        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+        List<KeyboardRow> keyboard = new ArrayList<>();
+
+        for (Usuario usuario : usuarios) {
+            KeyboardRow row = new KeyboardRow();
+            row.add(usuario.getUsuarioID() + " - " + usuario.getNombre());
+            keyboard.add(row);
+        }
+
+        keyboardMarkup.setKeyboard(keyboard);
+        message.setReplyMarkup(keyboardMarkup);
+
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            logger.error("Error al mostrar opciones de usuarios", e);
+        }
+    }
+
+    private void mostrarOpcionesSprints(long chatId) {
+        List<Sprint> sprints = tareaService.getAllSprints();
+        if (sprints.isEmpty()) {
+            sendMessage(chatId, "❌ No hay sprints disponibles");
+            return;
+        }
+
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText("🏃 Selecciona el sprint:");
+
+        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+        List<KeyboardRow> keyboard = new ArrayList<>();
+
+        // Agregar cada sprint como un botón
+        for (Sprint sprint : sprints) {
+            KeyboardRow row = new KeyboardRow();
+            String buttonText = sprint.getSprintID() + " - Sprint " + sprint.getNombreSprint();
+            row.add(buttonText);
+            keyboard.add(row);
+        }
+
+        // Agregar botón para cancelar
+        KeyboardRow cancelRow = new KeyboardRow();
+        cancelRow.add("❌ Cancelar");
+        keyboard.add(cancelRow);
+
+        keyboardMarkup.setKeyboard(keyboard);
+        keyboardMarkup.setResizeKeyboard(true);
+        keyboardMarkup.setOneTimeKeyboard(true);
+        message.setReplyMarkup(keyboardMarkup);
+
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            logger.error("Error al mostrar opciones de sprints", e);
+        }
+    }
+
+    private void mostrarOpcionesEstados(long chatId) {
+        List<Estado> estados = tareaService.getAllEstados();
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText("📊 Selecciona el estado inicial:");
+
+        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+        List<KeyboardRow> keyboard = new ArrayList<>();
+
+        for (Estado estado : estados) {
+            KeyboardRow row = new KeyboardRow();
+            row.add(estado.getId() + " - " + estado.getNombre());
+            keyboard.add(row);
+        }
+
+        keyboardMarkup.setKeyboard(keyboard);
+        message.setReplyMarkup(keyboardMarkup);
+
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            logger.error("Error al mostrar opciones de estados", e);
+        }
+    }
+
+    private void finalizarCreacionTarea(TareaCreationState state) {
+        try {
+            Tarea nuevaTarea = state.getTarea();
+            nuevaTarea.setFechaCreacion(OffsetDateTime.now());
+            nuevaTarea = tareaService.createTarea(nuevaTarea);
+
+            sendMessage(state.getChatId(), "✅ Tarea creada exitosamente!\n"
+                    + "📋 Nombre: " + nuevaTarea.getTareaNombre() + "\n"
+                    + "📝 Descripción: " + nuevaTarea.getDescripcion() + "\n"
+                    + "⚡ Prioridad: " + nuevaTarea.getPrioridad() + "\n"
+                    + "⏱️ Horas estimadas: " + nuevaTarea.getHorasEstimadas() + "\n"
+                    + "📅 Fecha entrega: " + nuevaTarea.getFechaEntrega().toLocalDate());
+
+            showMainMenu(state.getChatId());
         } catch (Exception e) {
             logger.error("Error al crear tarea", e);
-            sendMessage(state.getChatId(), "❌ Error al crear la tarea");
+            sendMessage(state.getChatId(), "❌ Error al crear la tarea: " + e.getMessage());
         } finally {
             TareaCreationManager.clearState(state.getChatId());
         }

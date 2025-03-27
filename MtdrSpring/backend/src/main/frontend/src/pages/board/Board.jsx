@@ -72,6 +72,27 @@ const Board = () => {
         { title: "Done", status: "Done" },
     ];
 
+    // PARA ELIMINAR TAREAS
+    const handleDeleteTask = async (taskId) => {
+        const confirmDelete = window.confirm("¿Estás seguro de eliminar esta tarea?");
+        if (!confirmDelete) return;
+      
+        try {
+          const response = await fetch(`${API_TAREAS}/${taskId}`, {
+            method: "DELETE",
+          });
+      
+          if (!response.ok) throw new Error("Error al eliminar la tarea");
+      
+          // Actualizar estado local (opcional si no quieres volver a llamar fetchTasks)
+          setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+        } catch (error) {
+          console.error("❌ Error al eliminar tarea:", error);
+        }
+      };
+      
+
+
     // PARA MOVER TAREAS 
 
     const handleDragEnd = async (result) => {
@@ -169,7 +190,7 @@ const Board = () => {
                                                 {...provided.draggableProps}
                                                 {...provided.dragHandleProps}
                                             >
-                                                <TaskCard task={task} />
+                                                <TaskCard task={task} onDelete={handleDeleteTask} />
                                             </div>
                                             )}
                                         </Draggable>

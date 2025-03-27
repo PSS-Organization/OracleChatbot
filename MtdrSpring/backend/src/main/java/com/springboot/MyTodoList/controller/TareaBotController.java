@@ -1,6 +1,10 @@
 package com.springboot.MyTodoList.controller;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -16,10 +20,12 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import com.springboot.MyTodoList.model.Tarea;
+import com.springboot.MyTodoList.model.TareaCreationState;
 import com.springboot.MyTodoList.service.TareaService;
 import com.springboot.MyTodoList.util.BotCommands;
 import com.springboot.MyTodoList.util.BotHelper;
 import com.springboot.MyTodoList.util.BotLabels;
+import com.springboot.MyTodoList.util.TareaCreationManager;
 
 public class TareaBotController extends TelegramLongPollingBot {
 
@@ -75,6 +81,11 @@ public class TareaBotController extends TelegramLongPollingBot {
     }
 
     private void handleDefaultActions(String messageText, long chatId) {
+        if (TareaCreationManager.isInCreationProcess(chatId)) {
+            handleTareaCreation(messageText, chatId);
+            return;
+        }
+
         // Manejo de acciones sobre tareas específicas
         if (messageText.contains("-✅ Completar")) {
             marcarTareaComoCompletada(messageText, chatId);
@@ -97,7 +108,7 @@ public class TareaBotController extends TelegramLongPollingBot {
             handleEstadoSelection(messageText, chatId);
         } else {
             // Asumimos que es el nombre de una nueva tarea
-            crearNuevaTarea(messageText, chatId);
+            //crearNuevaTarea(messageText, chatId);
         }
     }
 
@@ -240,7 +251,7 @@ public class TareaBotController extends TelegramLongPollingBot {
 
         // Tareas pendientes
         List<Tarea> tareasPendientes = tareas.stream()
-                .filter(tarea -> tarea.getCompletado() == 0)  
+                .filter(tarea -> tarea.getCompletado() == 0)
                 .collect(Collectors.toList());
 
         if (!tareasPendientes.isEmpty()) {
@@ -416,9 +427,10 @@ public class TareaBotController extends TelegramLongPollingBot {
     }
 
     private void solicitarNuevaTarea(long chatId) {
+        TareaCreationManager.startCreation(chatId);
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText("Por favor, ingresa el nombre de la nueva tarea:");
+        message.setText("📝 Por favor, ingresa el nombre de la tarea:");
         message.setReplyMarkup(new ReplyKeyboardRemove(true));
 
         try {
@@ -428,20 +440,98 @@ public class TareaBotController extends TelegramLongPollingBot {
         }
     }
 
-    private void crearNuevaTarea(String nombreTarea, long chatId) {
-        try {
-            Tarea tarea = new Tarea();
-            tarea.setTareaNombre(nombreTarea);
-            tarea.setDescripcion("Creada desde Telegram");
-            tarea.setFechaCreacion(OffsetDateTime.now());
-            tarea.setCompletado(0);
-            tarea.setPrioridad("BAJA");
+    private void handleTareaCreation(String messageText, long chatId) {
+        TareaCreationState state = TareaCreationManager.getState(chatId);
 
+        switch (state.getCurrentField()) {
+            case "NOMBRE":
+                state.getTarea().setTareaNombre(messageText);
+                state.setCurrentField("DESCRIPCION");
+                sendMessage(chatId, "📝 Ingresa la descripción de la tarea:");
+                break;
+
+            case "DESCRIPCION":
+                state.getTarea().setDescripcion(messageText);
+                state.setCurrentField("PRIORIDAD");
+                SendMessage prioridadMsg = new SendMessage();
+                prioridadMsg.setChatId(chatId);
+                prioridadMsg.setText("⚡ Selecciona la prioridad:");
+
+                ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+                List<KeyboardRow> keyboard = new ArrayList<>();
+                KeyboardRow row = new KeyboardRow();
+                row.add("BAJA");
+                row.add("MEDIA");
+                row.add("ALTA");
+                keyboard.add(row);
+                keyboardMarkup.setKeyboard(keyboard);
+                prioridadMsg.setReplyMarkup(keyboardMarkup);
+
+                try {
+                    execute(prioridadMsg);
+                } catch (TelegramApiException e) {
+                    logger.error("Error al enviar opciones de prioridad", e);
+                }
+                break;
+
+            case "PRIORIDAD":
+                if (!messageText.matches("BAJA|MEDIA|ALTA")) {
+                    sendMessage(chatId, "❌ Por favor, selecciona una prioridad válida (BAJA, MEDIA, ALTA)");
+                    return;
+                }
+                state.getTarea().setPrioridad(messageText);
+                state.setCurrentField("HORAS_ESTIMADAS");
+                sendMessage(chatId, "⏱️ Ingresa las horas estimadas (número):");
+                break;
+
+            case "HORAS_ESTIMADAS":
+                try {
+                    state.getTarea().setHorasEstimadas(Integer.parseInt(messageText));
+                    state.setCurrentField("FECHA_ENTREGA");
+                    sendMessage(chatId, "📅 Ingresa la fecha de entrega (formato: DD/MM/YYYY):");
+                } catch (NumberFormatException e) {
+                    sendMessage(chatId, "❌ Por favor, ingresa un número válido para las horas estimadas");
+                }
+                break;
+
+            case "FECHA_ENTREGA":
+                try {
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                    LocalDate fecha = LocalDate.parse(messageText, formatter);
+                    state.getTarea().setFechaEntrega(fecha.atStartOfDay().atOffset(ZoneOffset.UTC));
+                    finalizarCreacionTarea(state);
+                } catch (DateTimeParseException e) {
+                    sendMessage(chatId, "❌ Formato de fecha inválido. Usa DD/MM/YYYY");
+                }
+                break;
+        }
+    }
+
+    private void finalizarCreacionTarea(TareaCreationState state) {
+        Tarea tarea = state.getTarea();
+        tarea.setFechaCreacion(OffsetDateTime.now());
+        tarea.setCompletado(0);
+
+        try {
             tareaService.createTarea(tarea);
-            BotHelper.sendMessageToTelegram(chatId, "Tarea creada exitosamente", this);
-            mostrarListaTareas(chatId);
+            sendMessage(state.getChatId(), "✅ Tarea creada exitosamente!");
+            mostrarListaTareas(state.getChatId());
         } catch (Exception e) {
             logger.error("Error al crear tarea", e);
+            sendMessage(state.getChatId(), "❌ Error al crear la tarea");
+        } finally {
+            TareaCreationManager.clearState(state.getChatId());
+        }
+    }
+
+    private void sendMessage(long chatId, String text) {
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText(text);
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            logger.error("Error al enviar mensaje", e);
         }
     }
 

@@ -1,4 +1,4 @@
-import { Home, Dashboard, Chat, Group, Menu, Close } from "@mui/icons-material";
+import { Home, Dashboard, Chat, Group, Menu, Close , Task} from "@mui/icons-material";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 
@@ -7,6 +7,7 @@ const menuItems = [
     { name: "Board", icon: <Dashboard />, path: "/board" },
     { name: "Chatbot", icon: <Chat />, path: "/chatbot" },
     { name: "Team", icon: <Group />, path: "/team" },
+    { name : "Sprint", icon: <Task />, path: "/sprint" },
 ];
 
 const Sidebar = () => {

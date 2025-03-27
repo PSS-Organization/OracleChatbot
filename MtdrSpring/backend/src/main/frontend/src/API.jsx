@@ -23,6 +23,8 @@ export const API_SIGNUP = `${await getBackendUrl()}/usuarios/signup`; // Ahora u
 export const API_USERS = '/usuarios/all';
 
 export const API_TAREAS = `${await getBackendUrl()}/tareas`;  
+export const API_SPRINTS = `${await getBackendUrl()}/sprints`;
+
 // import { API_LIST, API_USERS } from './API.jsx';
 
 // // Usar API_LIST y API_USERS en tu código

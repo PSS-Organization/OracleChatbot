@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import Sidebar from "../../components/SideBar/SideBar";
 import Header from "../../components/Header/Header";
+import Sidebar from "../../components/SideBar/SideBar";
+import AddTask from "../../components/AddTask/AddTask";
 import TaskCard from "../../components/TaskCard/TaskCard";
 import { API_TAREAS } from "../../API";
 import {
@@ -29,34 +30,40 @@ const Board = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const fetchTasks = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch(API_TAREAS);
+            if (!response.ok) throw new Error("Error fetching tasks");
+            const data = await response.json();
+            
+            const formattedTasks = data.map(task => ({
+                id: task.tareaID,
+                title: task.tareaNombre,
+                description: task.descripcion,
+                tag: `Sprint ${task.sprintID}`,
+                tagColor: sprintColors[task.sprintID] || "bg-gray-200 text-gray-800", // Color por defecto
+                status: statusMapping[task.estadoID] || "To Do", // Mapeo de estado
+                users: [{ avatar: "https://randomuser.me/api/portraits/men/1.jpg" }], // Simulación de usuario
+                date: new Date(task.fechaEntrega).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) // Formato fecha
+            }));
+            
+            setTasks(formattedTasks);
+            setError("");
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    
+
+    // Fetch sprints on component mount
     useEffect(() => {
-        const fetchTasks = async () => {
-            try {
-                const response = await fetch(API_TAREAS);
-                if (!response.ok) throw new Error("Error fetching tasks");
-                const data = await response.json();
-                
-                const formattedTasks = data.map(task => ({
-                    id: task.tareaID,
-                    title: task.tareaNombre,
-                    description: task.descripcion,
-                    tag: `Sprint ${task.sprintID}`,
-                    tagColor: sprintColors[task.sprintID] || "bg-gray-200 text-gray-800", // Color por defecto
-                    status: statusMapping[task.estadoID] || "To Do", // Mapeo de estado
-                    users: [{ avatar: "https://randomuser.me/api/portraits/men/1.jpg" }], // Simulación de usuario
-                    date: new Date(task.fechaEntrega).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) // Formato fecha
-                }));
-                
-                setTasks(formattedTasks);
-            } catch (err) {
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
-        
         fetchTasks();
     }, []);
+    
 
     const columns = [
         { title: "To Do", status: "To Do" },
@@ -116,19 +123,20 @@ const Board = () => {
         }
       };
       
-
-    
-
-    if (loading) return <p className="text-center">Loading tasks...</p>;
-    if (error) return <p className="text-center text-red-500">Error: {error}</p>;
-
     return (
         <div className="flex min-h-screen bg-gray-100">
             <Sidebar />
             <div className="flex-1 flex flex-col w-full">
-                <Header />
+                <Header
+                    headerTitle="Sprint Manager"
+                    addButtonLabel="Add Task"
+                    AddComponent={AddTask}
+                    onAddComplete={fetchTasks} // refresh sprints when a new sprint is added
+                />
                 <div className="p-4 lg:p-6 mt-16 lg:mt-0 overflow-auto"> 
                     <h1 className="text-2xl font-bold mb-4">Task Board</h1>
+                    {loading && <p>Loading sprints...</p>}
+                    {error && <p className="text-red-500">{error}</p>}
                     <p className="text-gray-500 mb-6">{tasks.length} tasks in progress</p>
                     <DragDropContext onDragEnd={handleDragEnd}>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">

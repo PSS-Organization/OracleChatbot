@@ -7,7 +7,8 @@ const menuItems = [
     { name: "Board", icon: <Dashboard />, path: "/board" },
     { name: "Chatbot", icon: <Chat />, path: "/chatbot" },
     { name: "Team", icon: <Group />, path: "/team" },
-    { name : "Sprint", icon: <Task />, path: "/sprint" },
+    { name: "Sprint", icon: <Task />, path: "/sprint" },
+    { name: "Dashboard", icon: <Task />, path: "/dashboard" },
 ];
 
 const Sidebar = () => {

@@ -110,5 +110,10 @@ public class UsuarioService {
     public Optional<Usuario> getUsuarioByTelegramId(Long telegramId) {
         return usuarioRepository.findByTelegramID(telegramId);
     }
+
+    public Boolean isUsuarioAdmin(Long usuarioId) {
+        Optional<Usuario> usuarioOpt = usuarioRepository.findById(usuarioId);
+        return usuarioOpt.map(Usuario::getEsAdmin).orElse(false);
+    }
     
 }

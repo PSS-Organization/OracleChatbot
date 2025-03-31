@@ -73,6 +73,20 @@ public class UsuarioController {
                     .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
+    //Verificar si el usuario es admin
+    @GetMapping("/is-admin/{id}")
+    public ResponseEntity<Map<String, Object>> isAdmin(@PathVariable Long id) {
+        try {
+            boolean isAdmin = usuarioService.isUsuarioAdmin(id);
+            Map<String, Object> response = new HashMap<>();
+            response.put("usuarioId", id);
+            response.put("isAdmin", isAdmin);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Error al verificar si el usuario es admin"));
+        }
+    }
 
     // Actualizar usuario
     @PutMapping("/{id}")

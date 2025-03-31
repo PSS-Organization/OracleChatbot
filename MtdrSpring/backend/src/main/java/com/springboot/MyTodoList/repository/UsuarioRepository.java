@@ -16,4 +16,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
     Optional<Usuario> findByTelegramID(Long telegramID);
 
+    //Optional<Usuario>findByEsAdmin(Boolean esAdmin);
+
 }

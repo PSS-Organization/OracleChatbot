@@ -9,14 +9,29 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import com.springboot.MyTodoList.model.Estado;
+import com.springboot.MyTodoList.model.Sprint;
 import com.springboot.MyTodoList.model.Tarea;
+import com.springboot.MyTodoList.model.Usuario;
+import com.springboot.MyTodoList.repository.EstadoRepository;
+import com.springboot.MyTodoList.repository.SprintRepository;
 import com.springboot.MyTodoList.repository.TareaRepository;
+import com.springboot.MyTodoList.repository.UsuarioRepository;
 
 @Service
 public class TareaService {
 
     @Autowired
     private TareaRepository tareaRepository;
+
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+
+    @Autowired
+    private SprintRepository sprintRepository;
+
+    @Autowired
+    private EstadoRepository estadoRepository;
 
     public List<Tarea> getAllTareas() {
         return tareaRepository.findAll();
@@ -33,7 +48,7 @@ public class TareaService {
     public Tarea createTarea(Tarea tarea) {
         // ✅ Asignar valores por defecto solo si no están presentes
         if (tarea.getFechaCreacion() == null) {
-            tarea.setFechaCreacion(OffsetDateTime.now()); 
+            tarea.setFechaCreacion(OffsetDateTime.now());
         }
         if (tarea.getCompletado() == null) {
             tarea.setCompletado(0); // 0 = false en base de datos
@@ -41,12 +56,12 @@ public class TareaService {
         if (tarea.getPrioridad() == null) {
             tarea.setPrioridad("BAJA");
         }
-    
-        System.out.println("✅ Guardando tarea en BD: " + tarea.toString()); 
-    
+
+        System.out.println("✅ Guardando tarea en BD: " + tarea.toString());
+
         return tareaRepository.save(tarea);  // ✅ Devuelve solo la tarea creada
     }
- 
+
     public Tarea updateTarea(Long id, Tarea tarea) {
         Optional<Tarea> tareaData = tareaRepository.findById(id);
         if (tareaData.isPresent()) {
@@ -85,5 +100,17 @@ public class TareaService {
 
     public List<Tarea> getTareasByEstado(Long estadoID) {
         return tareaRepository.findByEstadoID(estadoID);
+    }
+
+    public List<Usuario> getAllUsuarios() {
+        return usuarioRepository.findAll();
+    }
+
+    public List<Sprint> getAllSprints() {
+        return sprintRepository.findAll();
+    }
+
+    public List<Estado> getAllEstados() {
+        return estadoRepository.findAll();
     }
 }

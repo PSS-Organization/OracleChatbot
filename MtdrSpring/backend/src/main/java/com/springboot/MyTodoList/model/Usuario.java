@@ -37,6 +37,9 @@ public class Usuario {
     @Column(name = "EQUIPOID")
     private Long equipoID;
 
+    @Column(name = "TELEGRAMID")
+    private Long telegramID;
+
     public Usuario() {
     }
 
@@ -116,6 +119,15 @@ public class Usuario {
         this.equipoID = equipoID;
     }
 
+    public Long getTelegramID() {
+        return telegramID;
+    }
+    
+    public void setTelegramID(Long telegramID) {
+        this.telegramID = telegramID;
+    }
+    
+
     @Override
     public String toString() {
         return "Usuario{"
@@ -127,6 +139,7 @@ public class Usuario {
                 + ", rolUsuario='" + rolUsuario + '\''
                 + ", esAdmin=" + esAdmin
                 + ", equipoID=" + equipoID
+                + ", telegramID=" + telegramID
                 + '}';
     }
 }

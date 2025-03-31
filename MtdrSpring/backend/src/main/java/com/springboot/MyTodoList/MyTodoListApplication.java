@@ -11,13 +11,24 @@ import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
-import com.springboot.MyTodoList.controller.TareaBotController;
+import com.springboot.MyTodoList.controller.bot.MainBotController;
+import com.springboot.MyTodoList.controller.bot.SprintBotController;
+import com.springboot.MyTodoList.controller.bot.TareaBotController;
+import com.springboot.MyTodoList.controller.bot.UsuarioBotController;
+import com.springboot.MyTodoList.service.SprintService;
 import com.springboot.MyTodoList.service.TareaService;
+import com.springboot.MyTodoList.service.UsuarioService;
 
 @SpringBootApplication
 public class MyTodoListApplication implements CommandLineRunner {
 
     private static final Logger logger = LoggerFactory.getLogger(MyTodoListApplication.class);
+
+    @Autowired
+    private UsuarioService usuarioService;
+
+    @Autowired
+    private SprintService sprintService;
 
     @Autowired
     private TareaService tareaService;
@@ -35,11 +46,24 @@ public class MyTodoListApplication implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         try {
+            // Crear instancias de los subcontroladores
+            TareaBotController tareaBot = new TareaBotController(tareaService, usuarioService, sprintService);
+            UsuarioBotController usuarioBot = new UsuarioBotController(tareaService, usuarioService);
+            SprintBotController sprintBot = new SprintBotController(sprintService,tareaService);
+
+            // Registrar el controlador principal con todos los sub-controladores
             TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
-            telegramBotsApi.registerBot(new TareaBotController(telegramBotToken, botName, tareaService));
-            logger.info("Bot de Tareas registrado exitosamente!");
+            telegramBotsApi.registerBot(new MainBotController(
+                    telegramBotToken,
+                    botName,
+                    tareaBot,
+                    usuarioBot,
+                    sprintBot
+            ));
+
+            logger.info("✅ Bot registrado correctamente en Telegram.");
         } catch (TelegramApiException e) {
-            logger.error("Error al registrar el bot", e);
+            logger.error("❌ Error al registrar el bot", e);
         }
     }
 }

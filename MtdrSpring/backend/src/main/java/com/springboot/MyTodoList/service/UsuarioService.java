@@ -22,6 +22,7 @@ public class UsuarioService {
         return usuarioRepository.findAll();
     }
 
+
     // Obtener usuario por ID
     public ResponseEntity<Usuario> getUsuarioById(Long id) {
         Optional<Usuario> userData = usuarioRepository.findById(id);
@@ -64,7 +65,10 @@ public class UsuarioService {
             usuarioExistente.setRolUsuario(usuario.getRolUsuario());
             usuarioExistente.setEsAdmin(usuario.getEsAdmin());
             usuarioExistente.setEquipoID(usuario.getEquipoID());
-            return usuarioRepository.save(usuarioExistente);
+            // if (usuario.getTelegramID() != null) {
+            //     usuarioExistente.setTelegramID(usuario.getTelegramID());
+            // }
+            // return usuarioRepository.save(usuarioExistente);
         }
         return null;
     }
@@ -87,4 +91,24 @@ public class UsuarioService {
         }
         return Optional.empty();
     }
+
+    
+
+    // Actualizar el telegram_id de un usuario
+    public Usuario updateTelegramID(Long usuarioId, Long telegramID) {
+        Optional<Usuario> usuarioData = usuarioRepository.findById(usuarioId);
+        if (usuarioData.isPresent()) {
+            Usuario usuarioExistente = usuarioData.get();
+            usuarioExistente.setTelegramID(telegramID);
+            return usuarioRepository.save(usuarioExistente);
+        }
+        return null;
+    }
+
+        // Buscar usuario por teléfono
+
+    public Optional<Usuario> getUsuarioByTelegramId(Long telegramId) {
+        return usuarioRepository.findByTelegramID(telegramId);
+    }
+    
 }

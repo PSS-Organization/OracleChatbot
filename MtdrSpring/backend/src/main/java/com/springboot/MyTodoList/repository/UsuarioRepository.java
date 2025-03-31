@@ -10,4 +10,10 @@ import com.springboot.MyTodoList.model.Usuario;
 @Repository
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     Optional<Usuario> findByCorreo(String correo);
+
+    // Optional<Usuario> findByTelegramID(String telegramID);
+    //Optional<Usuario> findByTelefono(String telefono);
+
+    Optional<Usuario> findByTelegramID(Long telegramID);
+
 }

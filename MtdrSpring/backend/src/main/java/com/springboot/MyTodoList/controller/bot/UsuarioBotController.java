@@ -33,32 +33,26 @@ public class UsuarioBotController {
     public boolean canHandle(String messageText) {
         return messageText.equals(BotLabels.VIEW_MY_TASKS.getLabel());
     }
-
-    public void handleMessage(String messageText, Long chatId, TelegramLongPollingBot bot) {
-        // Aquí, como aún no obtenemos dinámicamente el usuario, usamos un ID fijo de ejemplo
-        Long usuarioId = 1L;  // 🔁 Esto se debería mapear a un usuario real desde el chatId
-
+    
+    public void handleMessage(String messageText, Long chatId, Long telegramId, TelegramLongPollingBot bot) {
         try {
-
-            Optional<Usuario> usuarioOpt = usuarioService.getUsuarioByTelegramId(chatId);
-
+            Optional<Usuario> usuarioOpt = usuarioService.getUsuarioByTelegramId(telegramId);
             if (usuarioOpt.isEmpty()) {
-                BotHelper.sendMessageToTelegram(chatId, "No estás registrado aún. Por favor, proporciona tu número de teléfono para identificarte.", bot);
+                BotHelper.sendMessageToTelegram(chatId, "❌ No se pudo encontrar tu cuenta. Asegúrate de estar registrado.", bot);
                 return;
             }
-
-            Usuario usuario = usuarioOpt.get();
-            List<Tarea> tareas = tareaService.getTareasByUsuario(usuarioId);
-
-
+    
+            Usuario usuario = usuarioOpt.get(); // 👈 ahora sí tienes acceso a usuario
+    
+            List<Tarea> tareas = tareaService.getTareasByUsuario(usuario.getUsuarioID());
+    
             if (tareas.isEmpty()) {
                 BotHelper.sendMessageToTelegram(chatId, "No tienes tareas asignadas.", bot);
                 return;
             }
-
+    
             StringBuilder messageBuilder = new StringBuilder();
             messageBuilder.append("👤 *MIS TAREAS ASIGNADAS:*").append("\n\n");
-
             for (Tarea tarea : tareas) {
                 messageBuilder.append("🔸 *").append(tarea.getTareaNombre()).append("*\n")
                         .append("📝 ").append(tarea.getDescripcion()).append("\n")
@@ -66,27 +60,28 @@ public class UsuarioBotController {
                         .append("📅 Entrega: ").append(tarea.getFechaEntrega()).append("\n")
                         .append("⏱️ Horas Estimadas: ").append(tarea.getHorasEstimadas()).append("\n\n");
             }
-
+    
             SendMessage message = new SendMessage();
             message.setChatId(chatId);
             message.setText(messageBuilder.toString());
             message.setParseMode("Markdown");
-
-            // Agregar botón para regresar
+    
             ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
             List<KeyboardRow> keyboard = new ArrayList<>();
             KeyboardRow row = new KeyboardRow();
             row.add(BotLabels.SHOW_MAIN_SCREEN.getLabel());
             keyboard.add(row);
             keyboardMarkup.setKeyboard(keyboard);
-
             message.setReplyMarkup(keyboardMarkup);
-
+    
             bot.execute(message);
-
+    
         } catch (Exception e) {
             logger.error("Error al recuperar tareas del usuario", e);
             BotHelper.sendMessageToTelegram(chatId, "❌ Error al obtener tus tareas.", bot);
         }
     }
+    
+ 
+    
 }

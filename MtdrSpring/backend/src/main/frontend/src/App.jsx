@@ -4,6 +4,7 @@ import Signup from "./pages/authentication/Signup";
 import TodoList from "./pages/TodoList";
 import Board from "./pages/board/Board";
 import Sprint from "./pages/sprint/Sprint";
+import TestAuth from "./components/TestAuth";
 
 //import Sidebar from "./components/SideBar/SideBar";
 
@@ -17,6 +18,7 @@ function App() {
       <Route path="/home" element={<TodoList />} />
       <Route path="/board" element={<Board />} />
       <Route path="/sprint" element={<Sprint />} />
+      <Route path="/test-auth" element={<TestAuth />} />
 
       {/* Add other routes as needed */}
     </Routes>

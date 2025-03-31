@@ -1,12 +1,14 @@
 // Header.jsx
 import React, { useState } from "react";
-import { FilterList, Add, Close } from "@mui/icons-material";
+import { FilterList, Add, Close, Visibility, VisibilityOff } from "@mui/icons-material";
 
 const Header = ({
   headerTitle = "Default Title",
   addButtonLabel = "Add Something",
   AddComponent,
-  onAddComplete // callback al terminar el formulario
+  onAddComplete, // callback al terminar el formulario
+  showMyTasksOnly = false,
+  onToggleMyTasks = () => { } // new callback for eye icon toggle
 }) => {
   const [isModalOpen, setModalOpen] = useState(false);
 
@@ -30,6 +32,15 @@ const Header = ({
       </div>
 
       <div className="flex space-x-2">
+        {/* Eye toggle button */}
+        <button
+          className={`flex items-center space-x-1 ${showMyTasksOnly ? 'bg-blue-100 text-blue-800' : 'bg-gray-100'} px-3 py-2 rounded-md`}
+          onClick={onToggleMyTasks}
+          title={showMyTasksOnly ? "Showing only my tasks" : "Showing all tasks"}
+        >
+          {showMyTasksOnly ? <Visibility /> : <VisibilityOff />}
+        </button>
+
         <button className="flex items-center space-x-1 bg-gray-100 px-3 py-2 rounded-md">
           <FilterList />
           <span>Filter</span>

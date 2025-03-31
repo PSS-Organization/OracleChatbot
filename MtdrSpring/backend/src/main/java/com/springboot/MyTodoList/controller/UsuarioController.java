@@ -45,7 +45,7 @@ public class UsuarioController {
             ResponseEntity<Usuario> responseEntity = usuarioService.getUsuarioById(id);
             if (responseEntity.getBody() != null) {
                 Map<String, Object> response = new HashMap<>();
-                //response.put("success", true);
+                // response.put("success", true);
                 response.put("usuario", responseEntity.getBody());
                 return ResponseEntity.ok(response);
             }
@@ -73,7 +73,8 @@ public class UsuarioController {
                     .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
-    //Verificar si el usuario es admin
+
+    // Verificar si el usuario es admin
     @GetMapping("/is-admin/{id}")
     public ResponseEntity<Map<String, Object>> isAdmin(@PathVariable Long id) {
         try {
@@ -95,7 +96,8 @@ public class UsuarioController {
             Usuario usuarioActualizado = usuarioService.updateUsuario(id, usuario);
             if (usuarioActualizado != null) {
                 return ResponseEntity.ok()
-                        .body(Map.of("success", true, "message", "Usuario actualizado exitosamente", "usuario", usuarioActualizado));
+                        .body(Map.of("success", true, "message", "Usuario actualizado exitosamente", "usuario",
+                                usuarioActualizado));
             }
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
@@ -153,7 +155,8 @@ public class UsuarioController {
     public ResponseEntity<?> signup(@RequestBody Usuario usuario) {
         try {
             Usuario nuevoUsuario = usuarioService.createUsuario(usuario);
-            return ResponseEntity.ok(Map.of("success", true, "message", "User registered successfully", "usuario", nuevoUsuario));
+            return ResponseEntity
+                    .ok(Map.of("success", true, "message", "User registered successfully", "usuario", nuevoUsuario));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
         }

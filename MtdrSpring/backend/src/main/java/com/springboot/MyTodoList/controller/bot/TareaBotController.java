@@ -274,11 +274,25 @@ public class TareaBotController {
                 try {
                     LocalDate fecha = LocalDate.parse(messageText.trim(), DateTimeFormatter.ofPattern("dd/MM/yyyy"));
                     state.getTarea().setFechaEntrega(fecha.atStartOfDay().atOffset(ZoneOffset.UTC));
+                    state.getTarea().setCompletado(0); // Set initial completion status
+                    state.getTarea().setEstadoID(1L); // Set initial state ID
+
+                    // Create the task
                     tareaService.createTarea(state.getTarea());
+
+                    // Clear the creation state
                     TareaCreationManager.clearState(chatId);
-                    BotHelper.sendMessageToTelegram(chatId, "✅ Tarea creada exitosamente.", bot);
+
+                    // Show success message
+                    BotHelper.sendMessageToTelegram(chatId,
+                            "✅ ¡Tarea creada exitosamente!\n"
+                            + "🔸 " + state.getTarea().getTareaNombre() + "\n"
+                            + "📅 Fecha entrega: " + fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), bot);
+
+                    // Return to main menu
+                    MenuBotHelper.showMainMenu(chatId, bot);
                 } catch (Exception e) {
-                    BotHelper.sendMessageToTelegram(chatId, "❌ Formato inválido. Usa DD/MM/YYYY", bot);
+                    BotHelper.sendMessageToTelegram(chatId, "❌ Formato de fecha inválido. Usa DD/MM/YYYY", bot);
                 }
                 break;
         }

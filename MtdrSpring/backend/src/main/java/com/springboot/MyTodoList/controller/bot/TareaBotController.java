@@ -49,7 +49,9 @@ public class TareaBotController {
                 || messageText.equals(BotLabels.ADD_NEW_ITEM.getLabel())
                 || messageText.equals("👤 Mis Tareas")
                 || messageText.equals("✅ Completar Tareas")
-                || messageText.equals("📋 Tareas Completadas")
+                || messageText.equals("📋 Historial Completadas")
+                || messageText.equals("📊 Ver por Estado")
+                || messageText.startsWith("ESTADO_") // For state filtering
                 || messageText.equals("📋 Ver Todas las Tareas")
                 || messageText.startsWith("✅ ")
                 || TareaCreationManager.isInCreationProcess(chatId);
@@ -99,12 +101,17 @@ public class TareaBotController {
             case "✅ Completar Tareas":
                 showTaskCompletionMenu(chatId, telegramId, bot);
                 break;
-            case "📋 Tareas Completadas":
+            case "📋 Historial Completadas":
                 showCompletedTasks(chatId, telegramId, bot);
+                break;
+            case "📊 Ver por Estado":
+                showStateFilterMenu(chatId, telegramId, bot);
                 break;
             default:
                 if (messageText.startsWith("✅ ")) {
                     handleTaskCompletion(messageText, chatId, telegramId, bot);
+                } else if (messageText.startsWith("ESTADO_")) {
+                    showTasksByState(messageText.substring(7), chatId, telegramId, bot);
                 }
                 break;
         }
@@ -340,8 +347,13 @@ public class TareaBotController {
             keyboard.add(row1);
 
             KeyboardRow row2 = new KeyboardRow();
-            row2.add(BotLabels.SHOW_MAIN_SCREEN.getLabel());
+            row2.add("📋 Historial Completadas");
+            row2.add("📊 Ver por Estado");
             keyboard.add(row2);
+
+            KeyboardRow row3 = new KeyboardRow();
+            row3.add(BotLabels.SHOW_MAIN_SCREEN.getLabel());
+            keyboard.add(row3);
 
             keyboardMarkup.setKeyboard(keyboard);
             keyboardMarkup.setResizeKeyboard(true);
@@ -529,6 +541,120 @@ public class TareaBotController {
         } catch (Exception e) {
             logger.error("Error al mostrar tareas completadas", e);
             BotHelper.sendMessageToTelegram(chatId, "❌ Error al obtener tus tareas completadas.", bot);
+            MenuBotHelper.showMainMenu(chatId, bot);
+        }
+    }
+
+    private void showStateFilterMenu(Long chatId, Long telegramId, TelegramLongPollingBot bot) {
+        try {
+            ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+            List<KeyboardRow> keyboard = new ArrayList<>();
+
+            // Add estado options
+            String[] estados = {"PENDIENTE", "EN_PROCESO", "COMPLETADA"};
+            for (String estado : estados) {
+                KeyboardRow row = new KeyboardRow();
+                row.add("ESTADO_" + estado);
+                keyboard.add(row);
+            }
+
+            // Add return options
+            KeyboardRow lastRow = new KeyboardRow();
+            lastRow.add("👤 Mis Tareas");
+            lastRow.add(BotLabels.SHOW_MAIN_SCREEN.getLabel());
+            keyboard.add(lastRow);
+
+            keyboardMarkup.setKeyboard(keyboard);
+            keyboardMarkup.setResizeKeyboard(true);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText("📊 *Selecciona un estado para filtrar tus tareas:*");
+            message.setParseMode("Markdown");
+            message.setReplyMarkup(keyboardMarkup);
+
+            bot.execute(message);
+        } catch (Exception e) {
+            logger.error("Error al mostrar menú de estados", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al cargar estados.", bot);
+            MenuBotHelper.showMainMenu(chatId, bot);
+        }
+    }
+
+    private void showTasksByState(String estado, Long chatId, Long telegramId, TelegramLongPollingBot bot) {
+        try {
+            Optional<Usuario> usuarioOpt = usuarioService.getUsuarioByTelegramId(telegramId);
+            if (usuarioOpt.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId, "❌ No se encontró tu cuenta.", bot);
+                return;
+            }
+
+            Usuario usuario = usuarioOpt.get();
+            List<Tarea> tareas = tareaService.getTareasByUsuario(usuario.getUsuarioID());
+
+            // Filter by state
+            List<Tarea> tareasFiltradas = tareas.stream()
+                    .filter(t -> {
+                        switch (estado) {
+                            case "PENDIENTE":
+                                return t.getEstadoID() == 1L;
+                            case "EN_PROCESO":
+                                return t.getEstadoID() == 2L;
+                            case "COMPLETADA":
+                                return t.getEstadoID() == 3L;
+                            default:
+                                return false;
+                        }
+                    })
+                    .toList();
+
+            if (tareasFiltradas.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        "No tienes tareas en estado: " + estado.replace("_", " "), bot);
+                showStateFilterMenu(chatId, telegramId, bot);
+                return;
+            }
+
+            StringBuilder messageBuilder = new StringBuilder();
+            messageBuilder.append("📊 *TAREAS EN ESTADO: ").append(estado.replace("_", " ")).append("*\n\n");
+
+            for (Tarea tarea : tareasFiltradas) {
+                messageBuilder.append("🔸 *").append(tarea.getTareaNombre()).append("*\n")
+                        .append("📝 ").append(tarea.getDescripcion()).append("\n")
+                        .append("📅 Entrega: ").append(tarea.getFechaEntrega().toLocalDate()
+                        .format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))).append("\n")
+                        .append("⏱️ Horas estimadas: ").append(tarea.getHorasEstimadas()).append("\n");
+
+                if (tarea.getHorasReales() != null) {
+                    messageBuilder.append("⏱️ Horas reales: ").append(tarea.getHorasReales()).append("\n");
+                }
+                messageBuilder.append("\n");
+            }
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText(messageBuilder.toString());
+            message.setParseMode("Markdown");
+
+            ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+            List<KeyboardRow> keyboard = new ArrayList<>();
+
+            KeyboardRow row1 = new KeyboardRow();
+            row1.add("📊 Ver por Estado");
+            keyboard.add(row1);
+
+            KeyboardRow row2 = new KeyboardRow();
+            row2.add(BotLabels.SHOW_MAIN_SCREEN.getLabel());
+            keyboard.add(row2);
+
+            keyboardMarkup.setKeyboard(keyboard);
+            keyboardMarkup.setResizeKeyboard(true);
+            message.setReplyMarkup(keyboardMarkup);
+
+            bot.execute(message);
+        } catch (Exception e) {
+            logger.error("Error al mostrar tareas por estado", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al filtrar tareas.", bot);
             MenuBotHelper.showMainMenu(chatId, bot);
         }
     }

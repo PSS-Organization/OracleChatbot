@@ -58,7 +58,8 @@ public class MyTodoListApplication implements CommandLineRunner {
                     botName,
                     tareaBot,
                     usuarioBot,
-                    sprintBot
+                    sprintBot,
+                    usuarioService
             ));
 
             logger.info("✅ Bot registrado correctamente en Telegram.");

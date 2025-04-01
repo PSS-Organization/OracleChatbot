@@ -53,7 +53,7 @@ public class UsuarioService {
         return usuarioRepository.save(usuario);
     }
 
-    // Actualizar usuario
+    // Actualizar usuario (ahora sí guarda los cambios y actualiza telegramID también)
     public Usuario updateUsuario(Long id, Usuario usuario) {
         Optional<Usuario> usuarioData = usuarioRepository.findById(id);
         if (usuarioData.isPresent()) {
@@ -65,13 +65,18 @@ public class UsuarioService {
             usuarioExistente.setRolUsuario(usuario.getRolUsuario());
             usuarioExistente.setEsAdmin(usuario.getEsAdmin());
             usuarioExistente.setEquipoID(usuario.getEquipoID());
-            // if (usuario.getTelegramID() != null) {
-            //     usuarioExistente.setTelegramID(usuario.getTelegramID());
-            // }
-            // return usuarioRepository.save(usuarioExistente);
+
+            // 🔥 Asegúrate de actualizar también el telegramID si se recibió
+            if (usuario.getTelegramID() != null) {
+                usuarioExistente.setTelegramID(usuario.getTelegramID());
+            }
+
+            // ✅ ¡Ahora sí guarda los cambios en la base de datos!
+            return usuarioRepository.save(usuarioExistente);
         }
         return null;
     }
+
 
     // Eliminar usuario
     public boolean deleteUsuario(Long id) {
@@ -105,7 +110,10 @@ public class UsuarioService {
         return null;
     }
 
-        // Buscar usuario por teléfono
+    // Buscar usuario por teléfono
+    public Optional<Usuario> getUsuarioByTelefono(String telefono) {
+        return usuarioRepository.findByTelefono(telefono);
+    }
 
     public Optional<Usuario> getUsuarioByTelegramId(Long telegramId) {
         return usuarioRepository.findByTelegramID(telegramId);

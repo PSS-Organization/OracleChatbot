@@ -13,7 +13,15 @@ public enum BotLabels {
     UNDO("↩️ Deshacer"),
     DELETE("❌ Eliminar"),
     MY_TODO_LIST("MY TODO LIST"),
-    DASH("-");
+    DASH("-"),
+    COMPLETE_TASKS("✅ Completar Tareas"),
+    RETURN_MAIN_MENU("🔄 Volver al Menú Principal"),
+    REGISTRATION_START("📝 Registro de Nueva Cuenta"),
+    REGISTRATION_NAME("👤 Por favor ingresa tu nombre:"),
+    REGISTRATION_PHONE("📱 Por favor ingresa tu número de teléfono:"),
+    REGISTRATION_EMAIL("📧 Por favor ingresa tu correo electrónico:"),
+    REGISTRATION_PASSWORD("🔑 Por favor ingresa una contraseña:"),
+    REGISTRATION_COMPLETE("✅ ¡Registro completado!");
 
     private String label;
 

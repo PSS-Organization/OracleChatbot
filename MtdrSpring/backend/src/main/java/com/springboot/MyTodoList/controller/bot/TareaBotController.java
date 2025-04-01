@@ -5,6 +5,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
@@ -25,7 +26,6 @@ import com.springboot.MyTodoList.util.BotHelper;
 import com.springboot.MyTodoList.util.BotLabels;
 import com.springboot.MyTodoList.util.TareaCreationManager;
 
-
 public class TareaBotController {
 
     private static final Logger logger = LoggerFactory.getLogger(TareaBotController.class);
@@ -40,8 +40,8 @@ public class TareaBotController {
     }
 
     public boolean canHandle(String message) {
-        return message.equals(BotLabels.LIST_ALL_ITEMS.getLabel()) ||
-               message.equals(BotLabels.ADD_NEW_ITEM.getLabel());
+        return message.equals(BotLabels.LIST_ALL_ITEMS.getLabel())
+                || message.equals(BotLabels.ADD_NEW_ITEM.getLabel());
     }
 
     public void handleMessage(String message, Long chatId, TelegramLongPollingBot bot) {
@@ -54,6 +54,16 @@ public class TareaBotController {
                 break;
             default:
                 BotHelper.sendMessageToTelegram(chatId, "⚠️ Opción no reconocida en TareaBotController.", bot);
+        }
+    }
+
+    public void handleMessage(String messageText, Long chatId, Long telegramId, TelegramLongPollingBot bot) {
+        if (messageText.equals(BotLabels.VIEW_MY_TASKS.getLabel())) {
+            showUserTasks(chatId, telegramId, bot);
+        } else if (messageText.equals("✅ Completar Tareas")) {
+            showTaskCompletionMenu(chatId, telegramId, bot);
+        } else if (messageText.startsWith("✅ ")) {
+            handleTaskCompletion(messageText, chatId, telegramId, bot);
         }
     }
 
@@ -76,7 +86,7 @@ public class TareaBotController {
         StringBuilder messageText = new StringBuilder("📋 *Lista de Tareas:*\n\n");
         for (Tarea tarea : tareas) {
             messageText.append("🔹 ").append(tarea.getTareaNombre()).append("\n")
-                       .append("📄 ").append(tarea.getDescripcion()).append("\n\n");
+                    .append("📄 ").append(tarea.getDescripcion()).append("\n\n");
         }
 
         SendMessage message = new SendMessage();
@@ -175,10 +185,10 @@ public class TareaBotController {
                 state.setCurrentField("USUARIO");
                 // Aquí se muestra la lista de usuarios para seleccionar uno
                 mostrarOpcionesUsuarios(chatId, bot);
-                
+
                 break;
 
-                case "USUARIO":
+            case "USUARIO":
                 if (!messageText.contains("-")) {
                     BotHelper.sendMessageToTelegram(chatId, "❌ Selecciona un usuario válido de la lista.", bot);
                     return;
@@ -193,7 +203,7 @@ public class TareaBotController {
                 }
                 break;
 
-                case "SPRINT":
+            case "SPRINT":
                 if (!messageText.contains("-")) {
                     BotHelper.sendMessageToTelegram(chatId, "❌ Selecciona un sprint válido de la lista.", bot);
                     return;
@@ -230,6 +240,151 @@ public class TareaBotController {
                     BotHelper.sendMessageToTelegram(chatId, "❌ Formato inválido. Usa DD/MM/YYYY", bot);
                 }
                 break;
+        }
+    }
+
+    private void showUserTasks(Long chatId, Long telegramId, TelegramLongPollingBot bot) {
+        try {
+            Optional<Usuario> usuarioOpt = usuarioService.getUsuarioByTelegramId(telegramId);
+            if (usuarioOpt.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId, "❌ No se encontró tu cuenta.", bot);
+                return;
+            }
+
+            Usuario usuario = usuarioOpt.get();
+            List<Tarea> tareas = tareaService.getTareasByUsuario(usuario.getUsuarioID());
+
+            if (tareas.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId, "No tienes tareas asignadas.", bot);
+                MenuBotHelper.showMainMenu(chatId, bot);
+                return;
+            }
+
+            StringBuilder messageBuilder = new StringBuilder();
+            messageBuilder.append("👤 *MIS TAREAS:*\n\n");
+            for (Tarea tarea : tareas) {
+                String estado = tarea.getCompletado() == 1 ? "✅" : "⏳";
+                messageBuilder.append(estado).append(" *").append(tarea.getTareaNombre()).append("*\n")
+                        .append("📝 ").append(tarea.getDescripcion()).append("\n")
+                        .append("📅 Entrega: ").append(tarea.getFechaEntrega()).append("\n\n");
+            }
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText(messageBuilder.toString());
+            message.setParseMode("Markdown");
+
+            ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+            List<KeyboardRow> keyboard = new ArrayList<>();
+
+            KeyboardRow row1 = new KeyboardRow();
+            row1.add("✅ Completar Tareas");
+            keyboard.add(row1);
+
+            KeyboardRow row2 = new KeyboardRow();
+            row2.add(BotLabels.SHOW_MAIN_SCREEN.getLabel());
+            keyboard.add(row2);
+
+            keyboardMarkup.setKeyboard(keyboard);
+            keyboardMarkup.setResizeKeyboard(true);
+            message.setReplyMarkup(keyboardMarkup);
+
+            bot.execute(message);
+        } catch (Exception e) {
+            logger.error("Error al mostrar tareas del usuario", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al obtener tus tareas.", bot);
+            MenuBotHelper.showMainMenu(chatId, bot);
+        }
+    }
+
+    private void showTaskCompletionMenu(Long chatId, Long telegramId, TelegramLongPollingBot bot) {
+        try {
+            Optional<Usuario> usuarioOpt = usuarioService.getUsuarioByTelegramId(telegramId);
+            if (usuarioOpt.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId, "❌ No se encontró tu cuenta.", bot);
+                return;
+            }
+
+            Usuario usuario = usuarioOpt.get();
+            List<Tarea> tareasPendientes = tareaService.getTareasByUsuario(usuario.getUsuarioID())
+                    .stream()
+                    .filter(t -> t.getCompletado() == 0)
+                    .toList();
+
+            if (tareasPendientes.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId, "No tienes tareas pendientes para completar.", bot);
+                MenuBotHelper.showMainMenu(chatId, bot);
+                return;
+            }
+
+            ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+            List<KeyboardRow> keyboard = new ArrayList<>();
+
+            for (Tarea tarea : tareasPendientes) {
+                KeyboardRow row = new KeyboardRow();
+                row.add("TAREA: " + tarea.getTareaNombre());
+                keyboard.add(row);
+            }
+
+            KeyboardRow lastRow = new KeyboardRow();
+            lastRow.add(BotLabels.SHOW_MAIN_SCREEN.getLabel());
+            keyboard.add(lastRow);
+
+            keyboardMarkup.setKeyboard(keyboard);
+            keyboardMarkup.setResizeKeyboard(true);
+            keyboardMarkup.setOneTimeKeyboard(true);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText("Selecciona la tarea que deseas marcar como completada:");
+            message.setReplyMarkup(keyboardMarkup);
+
+            bot.execute(message);
+        } catch (Exception e) {
+            logger.error("Error al mostrar menú de completar tareas", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al cargar tus tareas.", bot);
+            MenuBotHelper.showMainMenu(chatId, bot);
+        }
+    }
+
+    private void handleTaskCompletion(String messageText, Long chatId, Long telegramId, TelegramLongPollingBot bot) {
+        try {
+            String taskName = messageText.substring(2).trim(); // Remove "✅ " prefix
+
+            Optional<Usuario> usuarioOpt = usuarioService.getUsuarioByTelegramId(telegramId);
+            if (usuarioOpt.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId, "❌ No se encontró tu cuenta.", bot);
+                return;
+            }
+
+            Usuario usuario = usuarioOpt.get();
+            List<Tarea> tareas = tareaService.getTareasByUsuario(usuario.getUsuarioID());
+
+            Optional<Tarea> tareaOpt = tareas.stream()
+                    .filter(t -> t.getTareaNombre().equals(taskName) && t.getCompletado() == 0)
+                    .findFirst();
+
+            if (tareaOpt.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId, "❌ No se encontró la tarea o ya está completada.", bot);
+                MenuBotHelper.showMainMenu(chatId, bot);
+                return;
+            }
+
+            Tarea tarea = tareaOpt.get();
+            tarea.setCompletado(1);
+            tarea.setEstadoID(3L); // ID for "Completado" state
+            tareaService.updateTarea(tarea.getTareaID(), tarea);
+
+            BotHelper.sendMessageToTelegram(chatId,
+                    "✅ ¡Tarea completada exitosamente!\n"
+                    + "🔸 " + tarea.getTareaNombre(), bot);
+
+            MenuBotHelper.showMainMenu(chatId, bot);
+
+        } catch (Exception e) {
+            logger.error("Error al completar tarea", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al completar la tarea.", bot);
+            MenuBotHelper.showMainMenu(chatId, bot);
         }
     }
 }

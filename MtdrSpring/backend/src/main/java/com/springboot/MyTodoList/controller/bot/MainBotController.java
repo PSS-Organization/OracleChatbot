@@ -145,8 +145,8 @@ public class MainBotController extends TelegramLongPollingBot {
         Usuario usuario = usuarioOpt2.get(); // ✅ este usuario ya está vinculado
 
         // 🧠 Delegar lógica a los subcontroladores
-        if (tareaBotController.canHandle(messageText)) {
-            tareaBotController.handleMessage(messageText, chatId, this);
+        if (tareaBotController.canHandle(messageText, telegramId)) {
+            tareaBotController.handleMessage(messageText, chatId, telegramId, this);  // Add telegramId parameter
             return;
         }
 

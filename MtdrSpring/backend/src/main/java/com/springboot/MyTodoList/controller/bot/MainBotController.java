@@ -5,8 +5,13 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Contact;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import com.springboot.MyTodoList.model.Usuario;
 import com.springboot.MyTodoList.service.UsuarioService;
@@ -14,6 +19,9 @@ import com.springboot.MyTodoList.util.BotCommands;
 import com.springboot.MyTodoList.util.BotHelper;
 import com.springboot.MyTodoList.util.BotLabels;
 import com.springboot.MyTodoList.util.RegistroManager;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainBotController extends TelegramLongPollingBot {
 
@@ -73,30 +81,24 @@ public class MainBotController extends TelegramLongPollingBot {
             Usuario usuario = usuarioOpt.get();
             usuario.setTelegramID(telegramId);
             usuarioService.updateUsuario(usuario.getUsuarioID(), usuario);
-            BotHelper.sendMessageToTelegram(chatId, "✅ ¡Bienvenido de nuevo " + usuario.getNombre() + "!", this);
+            BotHelper.sendMessageToTelegram(chatId,
+                    "✅ ¡Hola " + usuario.getNombre() + "! Te he registrado con telegramID en nuestra base de datos.",
+                    this);
             MenuBotHelper.showMainMenu(chatId, this);
         } else {
-            // Usuario no existe, iniciar proceso de registro
-            BotHelper.sendMessageToTelegram(chatId, "📝 Necesitamos registrarte. Por favor, ingresa tu nombre:", this);
-            RegistroManager.iniciarRegistro(chatId, telegramId);
+            // Usuario no existe en la base de datos
+            BotHelper.sendMessageToTelegram(chatId,
+                    "❌ Lo siento, tu número no está registrado en nuestra base de datos. No tienes acceso.", this);
         }
     }
 
     private void handleTextMessage(String messageText, Long chatId, Long telegramId) {
-        // Check if user is in registration process
-        if (RegistroManager.estaEnRegistro(chatId)) {
-            handleRegistrationProcess(messageText, chatId, telegramId);
-            return;
-        }
-
-        // Check if user exists
+        // Check if user exists by telegramID
         Optional<Usuario> usuarioOpt = usuarioService.getUsuarioByTelegramId(telegramId);
+
         if (usuarioOpt.isEmpty()) {
-            BotHelper.sendMessageToTelegram(chatId,
-                    "👋 ¡Bienvenido! Parece que eres nuevo por aquí.\n"
-                    + "Vamos a crear tu cuenta para que puedas usar el bot.\n"
-                    + "Por favor, ingresa tu nombre:", this);
-            RegistroManager.iniciarRegistro(chatId, telegramId);
+            // Usuario no tiene telegramID registrado, solicitar número de teléfono
+            requestPhoneNumber(chatId);
             return;
         }
 
@@ -126,27 +128,21 @@ public class MainBotController extends TelegramLongPollingBot {
 
                 VinculacionManager.finalizarProceso(chatId);
 
-                BotHelper.sendMessageToTelegram(chatId, "✅ Tu cuenta ha sido vinculada exitosamente. ¡Ya puedes usar el bot!", this);
+                BotHelper.sendMessageToTelegram(chatId,
+                        "✅ Tu cuenta ha sido vinculada exitosamente. ¡Ya puedes usar el bot!", this);
                 MenuBotHelper.showMainMenu(chatId, this);
             } else {
-                BotHelper.sendMessageToTelegram(chatId, "❌ No encontramos un usuario con ese número. Intenta nuevamente o contacta a soporte.", this);
+                BotHelper.sendMessageToTelegram(chatId, "❌ No encontramos un usuario con ese número. No tienes acceso.",
+                        this);
             }
             return;
         }
 
-        //🔍 Paso 2: Buscar usuario por telegramId
-        Optional<Usuario> usuarioOpt2 = usuarioService.getUsuarioByTelegramId(telegramId);
-        if (usuarioOpt2.isEmpty()) {
-            BotHelper.sendMessageToTelegram(chatId, "👋 Hola, aún no estás vinculado. Por favor, envía tu número de teléfono para identificarte.", this);
-            VinculacionManager.iniciarProceso(chatId); // 👈 aquí lo agregas
-            return;
-        }
-
-        Usuario usuario = usuarioOpt2.get(); // ✅ este usuario ya está vinculado
+        Usuario usuario = usuarioOpt.get(); // ✅ este usuario ya está vinculado
 
         // 🧠 Delegar lógica a los subcontroladores
         if (tareaBotController.canHandle(messageText, telegramId)) {
-            tareaBotController.handleMessage(messageText, chatId, telegramId, this);  // Add telegramId parameter
+            tareaBotController.handleMessage(messageText, chatId, telegramId, this); // Add telegramId parameter
             return;
         }
 
@@ -162,6 +158,35 @@ public class MainBotController extends TelegramLongPollingBot {
 
         // ❓ Si no se reconoce el mensaje
         tareaBotController.handleFallback(messageText, chatId, this);
+    }
+
+    private void requestPhoneNumber(Long chatId) {
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId.toString());
+        message.setText(
+                "👋 Hola, para usar este bot necesitas compartir tu número de teléfono para verificar tu acceso.");
+
+        // Crear teclado con botón para compartir contacto
+        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+        List<KeyboardRow> keyboard = new ArrayList<>();
+        KeyboardRow row = new KeyboardRow();
+
+        KeyboardButton button = new KeyboardButton("Compartir mi número");
+        button.setRequestContact(true);
+        row.add(button);
+
+        keyboard.add(row);
+        keyboardMarkup.setKeyboard(keyboard);
+        keyboardMarkup.setResizeKeyboard(true);
+        keyboardMarkup.setOneTimeKeyboard(true);
+
+        message.setReplyMarkup(keyboardMarkup);
+
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            logger.error("Error al solicitar el número de teléfono: " + e.getMessage());
+        }
     }
 
     private void handleRegistrationProcess(String messageText, Long chatId, Long telegramId) {

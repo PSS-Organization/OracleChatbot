@@ -125,4 +125,17 @@ public class Tarea {
                 ", estadoID=" + estadoID +
                 '}';
     }
+
+    public Tarea(Tarea original) {
+        this.tareaNombre = original.getTareaNombre();
+        this.descripcion = original.getDescripcion();
+        this.fechaEntrega = original.getFechaEntrega();
+        this.prioridad = original.getPrioridad();
+        this.horasEstimadas = original.getHorasEstimadas();
+        this.usuarioID = original.getUsuarioID();
+        this.sprintID = original.getSprintID();
+        this.estadoID = original.getEstadoID();
+        this.completado = original.getCompletado();
+    }
+    
 }

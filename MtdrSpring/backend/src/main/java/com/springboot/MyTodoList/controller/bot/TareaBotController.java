@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -317,7 +318,7 @@ public class TareaBotController {
             List<Tarea> tareas = tareaService.getTareasByUsuario(usuario.getUsuarioID())
                     .stream()
                     .filter(t -> t.getCompletado() == 0) // Only show incomplete tasks
-                    .toList();
+                    .collect(Collectors.toList());
 
             if (tareas.isEmpty()) {
                 BotHelper.sendMessageToTelegram(chatId, "No tienes tareas asignadas.", bot);
@@ -379,7 +380,7 @@ public class TareaBotController {
             List<Tarea> tareasPendientes = tareaService.getTareasByUsuario(usuario.getUsuarioID())
                     .stream()
                     .filter(t -> t.getCompletado() == 0)
-                    .toList();
+                    .collect(Collectors.toList());
 
             if (tareasPendientes.isEmpty()) {
                 BotHelper.sendMessageToTelegram(chatId, "No tienes tareas pendientes para completar.", bot);
@@ -501,7 +502,7 @@ public class TareaBotController {
             List<Tarea> tareasCompletadas = tareaService.getTareasByUsuario(usuario.getUsuarioID())
                     .stream()
                     .filter(t -> t.getCompletado() == 1)
-                    .toList();
+                    .collect(Collectors.toList());
 
             if (tareasCompletadas.isEmpty()) {
                 BotHelper.sendMessageToTelegram(chatId, "No tienes tareas completadas.", bot);
@@ -606,7 +607,7 @@ public class TareaBotController {
                                 return false;
                         }
                     })
-                    .toList();
+                    .collect(Collectors.toList());
 
             if (tareasFiltradas.isEmpty()) {
                 BotHelper.sendMessageToTelegram(chatId,

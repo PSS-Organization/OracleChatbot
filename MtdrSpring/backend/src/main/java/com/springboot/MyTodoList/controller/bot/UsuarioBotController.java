@@ -3,6 +3,7 @@ package com.springboot.MyTodoList.controller.bot;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -109,7 +110,7 @@ public class UsuarioBotController {
             List<Tarea> tareas = tareaService.getTareasByUsuario(usuario.getUsuarioID())
                     .stream()
                     .filter(t -> t.getCompletado() == 0)
-                    .toList();
+                    .collect(Collectors.toList());
 
             if (tareas.isEmpty()) {
                 BotHelper.sendMessageToTelegram(chatId, "No tienes tareas pendientes para completar.", bot);

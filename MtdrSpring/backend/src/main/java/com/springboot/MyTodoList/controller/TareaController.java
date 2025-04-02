@@ -148,6 +148,63 @@ public class TareaController {
     }
 }
 
+    // 🔽 DTO para marcar una tarea como completada
+    public static class CompletarTareaDTO {
+        private Integer horasReales;
+        private String comentario;
+        private Integer completado;
+
+        public Integer getHorasReales() { return horasReales; }
+        public void setHorasReales(Integer horasReales) { this.horasReales = horasReales; }
+
+        public String getComentario() { return comentario; }
+        public void setComentario(String comentario) { this.comentario = comentario; }
+
+        public Integer getCompletado() { return completado; }
+        public void setCompletado(Integer completado) { this.completado = completado; }
+    }
+
+    @PutMapping("/{id}/completar")
+    public ResponseEntity<?> completarTarea(@PathVariable Long id, @RequestBody CompletarTareaDTO completarDTO) {
+        try {
+            Tarea tarea = tareaService.getTareaById(id).getBody();
+            if (tarea == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "success", false, 
+                    "message", "Tarea no encontrada"
+                ));
+            }
+
+            // Validar horas reales
+            if (completarDTO.getHorasReales() == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Las horas reales son obligatorias para completar una tarea"
+                ));
+            }
+
+            // Actualizar la tarea
+            tarea.setHorasReales(completarDTO.getHorasReales());
+            tarea.setCompletado(completarDTO.getCompletado() != null ? completarDTO.getCompletado() : 1);
+            tarea.setEstadoID(4L); // Establecer estado "Done"
+            
+            // Si hay comentario, podría guardarse en otro campo o tabla relacionada
+            // En este caso se omite porque no hay campo para comentarios en el modelo Tarea
+
+            Tarea tareaActualizada = tareaService.updateTarea(id, tarea);
+
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Tarea completada exitosamente",
+                "tarea", tareaActualizada
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "success", false,
+                "message", "Error al completar la tarea: " + e.getMessage()
+            ));
+        }
+    }
 
     @GetMapping("/usuario/{usuarioID}")
     public ResponseEntity<List<Tarea>> getTareasByUsuario(@PathVariable Long usuarioID) {

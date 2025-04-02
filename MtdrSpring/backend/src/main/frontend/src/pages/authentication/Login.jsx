@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { API_SIGNUP } from '../../API';
 import '../../css/Global.css';
-import axios from 'axios'; 
+import axios from 'axios';
 import { getBackendUrl } from '../../utils/getBackendUrl';
 
 const Login = () => {
@@ -14,24 +14,29 @@ const Login = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null); // Clear previous errors
-    
+
         try {
             // Get the backend URL dynamically
             const backendUrl = await getBackendUrl();
 
             // Send login request to backend
-            const response = await axios.post(`${backendUrl}/usuarios/login`, { 
-                email, 
-                password 
+            const response = await axios.post(`${backendUrl}/usuarios/login`, {
+                email,
+                password
             });
-    
+
             if (response.data.success) {
-        
+
                 localStorage.setItem('user', JSON.stringify(response.data.usuario));
-    
+
+                // Store the userId separately for easier access
+                const userId = response.data.usuario.usuarioID;
+                localStorage.setItem('userId', userId);
+                console.log('Stored userId in localStorage:', userId);
+
                 navigate('/board');
             } else {
-               
+
                 setError(response.data.message || 'Invalid credentials');
             }
         } catch (err) {

@@ -1,4 +1,4 @@
-import React, { useState,useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { API_TAREAS } from "../../API";
 import { API_SPRINTS } from "../../API";
 import { getBackendUrl } from "../../utils/getBackendUrl";
@@ -14,9 +14,36 @@ const AddTask = ({ onAddComplete }) => {
     const [error, setError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
     const [loading, setLoading] = useState(false);
+    const [currentUserID, setCurrentUserID] = useState(null);
+    const [isAdmin, setIsAdmin] = useState(false);
 
     // cargar usuarios y sprints en formulario
     const [usuarios, setUsuarios] = useState([]);
+    
+    // Get current user info and check if admin
+    useEffect(() => {
+        const storedUserId = localStorage.getItem("userId");
+        if (storedUserId) {
+            setCurrentUserID(storedUserId);
+            setUserID(storedUserId); // Set the current user as default assignee
+            
+            // Check if user is admin
+            const checkAdminStatus = async () => {
+                try {
+                    const response = await fetch(`/usuarios/is-admin/${storedUserId}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        setIsAdmin(data.isAdmin);
+                    }
+                } catch (err) {
+                    console.error("Error checking admin status:", err);
+                }
+            };
+            
+            checkAdminStatus();
+        }
+    }, []);
+    
     useEffect(() => {
         const fetchUsuarios = async () => {
           try {
@@ -55,7 +82,10 @@ const AddTask = ({ onAddComplete }) => {
         setSuccessMessage("");
         setLoading(true);
 
-        if (!taskName || !description || !dueDate || !userID) {
+        // Assign to current user if not admin
+        const assigneeId = isAdmin ? userID : currentUserID;
+        
+        if (!taskName || !description || !dueDate || !assigneeId) {
             setError("Todos los campos son obligatorios.");
             setLoading(false);
             return;
@@ -67,7 +97,7 @@ const AddTask = ({ onAddComplete }) => {
             fechaEntrega: new Date(dueDate).toISOString(),
             prioridad: priority,
             horasEstimadas: estimatedHours ? parseInt(estimatedHours) : null,
-            usuarioID: parseInt(userID),
+            usuarioID: parseInt(assigneeId),
             sprintID: parseInt(sprintID),
         };
 
@@ -93,7 +123,7 @@ const AddTask = ({ onAddComplete }) => {
             setPriority("BAJA");
             setDueDate("");
             setEstimatedHours("");
-            setUserID("");
+            setUserID(isAdmin ? "" : currentUserID);
             setSprintID("");
 
             // Notify parent to refresh the task list
@@ -147,31 +177,41 @@ const AddTask = ({ onAddComplete }) => {
                     className="p-2 border rounded"
                 />
 
-                <select
-                value={userID}
-                onChange={(e) => setUserID(e.target.value)}
-                className="p-2 border rounded"
-                >
-                <option value="">Select User</option>
-                {usuarios.map((user) => (
-                <option key={user.usuarioID} value={user.usuarioID}>
-                    {user.usuarioID} - {user.nombre}
-                </option>
-                ))}
-                </select>
+                {isAdmin ? (
+                    // Admin can assign to anyone
+                    <select
+                        value={userID}
+                        onChange={(e) => setUserID(e.target.value)}
+                        className="p-2 border rounded"
+                    >
+                        <option value="">Select User</option>
+                        {usuarios.map((user) => (
+                            <option key={user.usuarioID} value={user.usuarioID}>
+                                {user.usuarioID} - {user.nombre}
+                            </option>
+                        ))}
+                    </select>
+                ) : (
+                    // Non-admin can only see and is auto-assigned
+                    <div className="p-2 border rounded bg-gray-100">
+                        <p className="text-gray-700">
+                            {usuarios.find(u => u.usuarioID != null && currentUserID != null && u.usuarioID.toString() === currentUserID.toString())?.nombre || 'Current User'} (Auto-assigned)
+                        </p>
+                    </div>
+                )}
 
-
                 <select
-                value={sprintID}
-                onChange={(e) => setSprintID(e.target.value)}
-                className="p-2 border rounded"
+                    value={sprintID}
+                    onChange={(e) => setSprintID(e.target.value)}
+                    className="p-2 border rounded"
+                    required
                 >
-                <option value="">Select Sprint</option>
-                {sprints.map((sprint) => (
-                    <option key={sprint.sprintID} value={sprint.sprintID}>
-                    {sprint.sprintID} - {sprint.nombreSprint}
-                    </option>
-                ))}
+                    <option value="">Select Sprint</option>
+                    {sprints.map((sprint) => (
+                        <option key={sprint.sprintID} value={sprint.sprintID}>
+                        {sprint.sprintID} - {sprint.nombreSprint}
+                        </option>
+                    ))}
                 </select>
 
                 <button

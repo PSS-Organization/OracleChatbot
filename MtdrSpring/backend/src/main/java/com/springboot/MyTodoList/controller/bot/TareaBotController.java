@@ -269,13 +269,24 @@ public class TareaBotController {
             case "HORAS":
                 try {
                     int horas = Integer.parseInt(messageText.trim());
+            
+                    if (horas > 4) {
+                        BotHelper.sendMessageToTelegram(chatId,
+                            "⚠️ Las tareas no pueden tener más de 4 horas estimadas.\n" +
+                            "Por favor, ingresa un número menor o igual a 4.", bot);
+                        return; // 👈 no avanza, vuelve a pedir las horas
+                    }
+            
                     state.getTarea().setHorasEstimadas(horas);
                     state.setCurrentField("FECHA");
-                    BotHelper.sendMessageToTelegram(chatId, "📅 Ingresa la *fecha de entrega* (formato: DD/MM/YYYY):", bot);
+                    BotHelper.sendMessageToTelegram(chatId,
+                        "📅 Ingresa la *fecha de entrega* (formato: DD/MM/YYYY):", bot);
                 } catch (NumberFormatException e) {
-                    BotHelper.sendMessageToTelegram(chatId, "❌ Ingresa un número válido de horas.", bot);
+                    BotHelper.sendMessageToTelegram(chatId,
+                        "❌ Ingresa un número válido de horas.", bot);
                 }
                 break;
+            
 
             case "FECHA":
                 try {

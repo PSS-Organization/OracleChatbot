@@ -15,6 +15,9 @@ on:
 jobs:
   super-lint:
     name: Lint code base
+    permissions:
+      contents: read
+      statuses: write
     runs-on: ubuntu-latest
     steps:       
       - name: Checkout code

@@ -85,6 +85,8 @@ public class MainBotController extends TelegramLongPollingBot {
         Long chatId = callbackQuery.getMessage().getChatId();
         Long telegramId = callbackQuery.getFrom().getId();
 
+        logger.info("Callback recibido: " + callbackData); // Log the callback data
+
         // Acknowledge the callback query
         try {
             AnswerCallbackQuery answer = new AnswerCallbackQuery();
@@ -99,7 +101,10 @@ public class MainBotController extends TelegramLongPollingBot {
                 callbackData.startsWith("SPRINT_") ||
                 callbackData.startsWith("HORAS_") ||
                 callbackData.startsWith("FECHA_") ||
-                callbackData.equals("FECHA_MANUAL")) {
+                callbackData.equals("FECHA_MANUAL") ||
+                callbackData.startsWith("PRIORIDAD_") ||
+                callbackData.startsWith("CAL_") ||
+                callbackData.equals("CAL_NONE")) {
             tareaBotController.handleCreationCallback(callbackData, chatId, this);
             return;
         }

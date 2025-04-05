@@ -280,97 +280,198 @@ public class TareaBotController {
     }
 
     private void mostrarOpcionesFecha(Long chatId, TelegramLongPollingBot bot) {
-        // Obtenemos la fecha actual
-        LocalDate today = LocalDate.now();
+        // Show an interactive calendar for the current month
+        showCalendar(chatId, bot, LocalDate.now().getYear(), LocalDate.now().getMonthValue());
+    }
 
-        // Crear teclado inline
+    private void showCalendar(Long chatId, TelegramLongPollingBot bot, int year, int month) {
+        LocalDate date = LocalDate.of(year, month, 1);
+
+        // Build calendar markup
         InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
 
-        // Fila 1: Próximos 3 días
-        List<InlineKeyboardButton> row1 = new ArrayList<>();
-        for (int i = 1; i <= 3; i++) {
-            LocalDate date = today.plusDays(i);
-            String formattedDate = date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        // Add month and year header
+        List<InlineKeyboardButton> headerRow = new ArrayList<>();
 
-            InlineKeyboardButton button = new InlineKeyboardButton();
-            button.setText(formattedDate + " (" + getDayName(date) + ")");
-            button.setCallbackData("FECHA_" + formattedDate);
-            row1.add(button);
+        // Previous month button
+        InlineKeyboardButton prevButton = new InlineKeyboardButton();
+        prevButton.setText("◀️");
+        prevButton.setCallbackData("CAL_PREV_" + year + "_" + month);
+        headerRow.add(prevButton);
+
+        // Month and year display
+        InlineKeyboardButton monthYearButton = new InlineKeyboardButton();
+        monthYearButton.setText(getMonthName(month) + " " + year);
+        monthYearButton.setCallbackData("CAL_NONE");
+        headerRow.add(monthYearButton);
+
+        // Next month button
+        InlineKeyboardButton nextButton = new InlineKeyboardButton();
+        nextButton.setText("▶️");
+        nextButton.setCallbackData("CAL_NEXT_" + year + "_" + month);
+        headerRow.add(nextButton);
+
+        rowsInline.add(headerRow);
+
+        // Add days of week header
+        List<InlineKeyboardButton> daysRow = new ArrayList<>();
+        String[] dayNames = { "L", "M", "X", "J", "V", "S", "D" };
+        for (String day : dayNames) {
+            InlineKeyboardButton dayButton = new InlineKeyboardButton();
+            dayButton.setText(day);
+            dayButton.setCallbackData("CAL_NONE");
+            daysRow.add(dayButton);
         }
-        rowsInline.add(row1);
+        rowsInline.add(daysRow);
 
-        // Fila 2: Próximos 3 días
-        List<InlineKeyboardButton> row2 = new ArrayList<>();
-        for (int i = 4; i <= 6; i++) {
-            LocalDate date = today.plusDays(i);
-            String formattedDate = date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        // Calculate the first day of week for this month
+        int firstDayOfWeek = date.getDayOfWeek().getValue(); // 1 = Monday, 7 = Sunday
 
-            InlineKeyboardButton button = new InlineKeyboardButton();
-            button.setText(formattedDate + " (" + getDayName(date) + ")");
-            button.setCallbackData("FECHA_" + formattedDate);
-            row2.add(button);
+        // Calculate how many days in the month
+        int daysInMonth = date.lengthOfMonth();
+
+        // Create calendar grid
+        int dayCounter = 1;
+
+        // Add empty days at the beginning for correct alignment
+        List<InlineKeyboardButton> weekRow = new ArrayList<>();
+        for (int i = 1; i < firstDayOfWeek; i++) {
+            InlineKeyboardButton emptyButton = new InlineKeyboardButton();
+            emptyButton.setText(" ");
+            emptyButton.setCallbackData("CAL_NONE");
+            weekRow.add(emptyButton);
         }
-        rowsInline.add(row2);
 
-        // Fila 3: Próxima semana
-        List<InlineKeyboardButton> row3 = new ArrayList<>();
-        LocalDate nextWeek = today.plusWeeks(1);
-        String formattedNextWeek = nextWeek.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        // First week might be partial
+        while (weekRow.size() < 7 && dayCounter <= daysInMonth) {
+            InlineKeyboardButton dayButton = new InlineKeyboardButton();
 
-        InlineKeyboardButton nextWeekButton = new InlineKeyboardButton();
-        nextWeekButton.setText("Próxima semana (" + formattedNextWeek + ")");
-        nextWeekButton.setCallbackData("FECHA_" + formattedNextWeek);
-        row3.add(nextWeekButton);
-        rowsInline.add(row3);
+            boolean isToday = LocalDate.now().equals(
+                    LocalDate.of(year, month, dayCounter));
 
-        // Fila 4: Ingresar fecha manualmente
-        List<InlineKeyboardButton> row4 = new ArrayList<>();
+            // Highlight today
+            dayButton.setText(isToday ? "【" + dayCounter + "】" : String.valueOf(dayCounter));
+
+            // Format the date string for callback data (DD/MM/YYYY)
+            String dateStr = String.format("%02d/%02d/%04d", dayCounter, month, year);
+            dayButton.setCallbackData("FECHA_" + dateStr);
+
+            weekRow.add(dayButton);
+            dayCounter++;
+        }
+
+        if (!weekRow.isEmpty()) {
+            rowsInline.add(weekRow);
+        }
+
+        // Remaining weeks
+        while (dayCounter <= daysInMonth) {
+            weekRow = new ArrayList<>();
+
+            for (int i = 0; i < 7 && dayCounter <= daysInMonth; i++) {
+                InlineKeyboardButton dayButton = new InlineKeyboardButton();
+
+                boolean isToday = LocalDate.now().equals(
+                        LocalDate.of(year, month, dayCounter));
+
+                dayButton.setText(isToday ? "【" + dayCounter + "】" : String.valueOf(dayCounter));
+
+                // Format the date string for callback data (DD/MM/YYYY)
+                String dateStr = String.format("%02d/%02d/%04d", dayCounter, month, year);
+                dayButton.setCallbackData("FECHA_" + dateStr);
+
+                weekRow.add(dayButton);
+                dayCounter++;
+            }
+
+            // Fill empty slots at the end
+            while (weekRow.size() < 7) {
+                InlineKeyboardButton emptyButton = new InlineKeyboardButton();
+                emptyButton.setText(" ");
+                emptyButton.setCallbackData("CAL_NONE");
+                weekRow.add(emptyButton);
+            }
+
+            rowsInline.add(weekRow);
+        }
+
+        // Add a row for manual entry
+        List<InlineKeyboardButton> manualRow = new ArrayList<>();
         InlineKeyboardButton manualButton = new InlineKeyboardButton();
         manualButton.setText("Ingresar fecha manualmente");
         manualButton.setCallbackData("FECHA_MANUAL");
-        row4.add(manualButton);
-        rowsInline.add(row4);
+        manualRow.add(manualButton);
+        rowsInline.add(manualRow);
 
         markupInline.setKeyboard(rowsInline);
 
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText("📅 *Selecciona la fecha de entrega:*");
+        message.setText("📅 *Selecciona una fecha:*");
         message.setParseMode("Markdown");
         message.setReplyMarkup(markupInline);
 
         try {
             bot.execute(message);
         } catch (Exception e) {
-            logger.error("Error mostrando opciones de fecha", e);
+            logger.error("Error mostrando calendario", e);
         }
     }
 
-    private String getDayName(LocalDate date) {
-        String[] days = { "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado" };
-        return days[date.getDayOfWeek().getValue() % 7];
+    private String getMonthName(int month) {
+        String[] monthNames = {
+                "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+        };
+        return monthNames[month - 1];
     }
 
     private void handleTareaCreation(String messageText, Long chatId, TelegramLongPollingBot bot) {
         TareaCreationState state = TareaCreationManager.getState(chatId);
 
+        if (state == null) {
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error en el proceso de creación. Intenta nuevamente con /start",
+                    bot);
+            return;
+        }
+
         switch (state.getCurrentField()) {
             case "NOMBRE":
+                // Validate task name
+                if (messageText.trim().isEmpty() || messageText.length() > 100) {
+                    BotHelper.sendMessageToTelegram(chatId,
+                            "❌ Nombre inválido. Debe tener entre 1 y 100 caracteres.\n" +
+                                    "Por favor, ingresa otro nombre:",
+                            bot);
+                    return;
+                }
+
                 state.getTarea().setTareaNombre(messageText);
                 state.setCurrentField("DESCRIPCION");
                 BotHelper.sendMessageToTelegram(chatId, "📝 Ingresa una *descripción* para la tarea:", bot);
                 break;
 
             case "DESCRIPCION":
+                // Validate description
+                if (messageText.length() > 500) {
+                    BotHelper.sendMessageToTelegram(chatId,
+                            "❌ Descripción demasiado larga. Máximo 500 caracteres.\n" +
+                                    "Por favor, ingresa una descripción más corta:",
+                            bot);
+                    return;
+                }
+
                 state.getTarea().setDescripcion(messageText);
                 state.setCurrentField("PRIORIDAD");
-                BotHelper.sendMessageToTelegram(chatId, "📌 Especifica la *prioridad* (BAJA, MEDIA, ALTA):", bot);
+                mostrarOpcionesPrioridad(chatId, bot);
                 break;
 
             case "PRIORIDAD":
+                // This is now only used for manual input, normally handled by callbacks
                 if (!Pattern.matches("(?i)BAJA|MEDIA|ALTA", messageText)) {
                     BotHelper.sendMessageToTelegram(chatId, "❌ Prioridad inválida. Usa BAJA, MEDIA o ALTA.", bot);
+                    mostrarOpcionesPrioridad(chatId, bot);
                     return;
                 }
                 state.getTarea().setPrioridad(messageText.toUpperCase());
@@ -382,11 +483,20 @@ public class TareaBotController {
                 // This is only used for manual input, now handled by callbacks
                 try {
                     Long userId = Long.parseLong(messageText.trim());
+                    // Validate that user exists
+                    if (!usuarioService.getAllUsuarios().stream().anyMatch(u -> u.getUsuarioID().equals(userId))) {
+                        BotHelper.sendMessageToTelegram(chatId,
+                                "❌ Usuario no encontrado. Por favor, selecciona de la lista.", bot);
+                        mostrarOpcionesUsuarios(chatId, bot);
+                        return;
+                    }
+
                     state.getTarea().setUsuarioID(userId);
                     state.setCurrentField("SPRINT");
                     mostrarOpcionesSprints(chatId, bot);
                 } catch (NumberFormatException e) {
                     BotHelper.sendMessageToTelegram(chatId, "❌ Formato inválido. Selecciona desde el menú.", bot);
+                    mostrarOpcionesUsuarios(chatId, bot);
                 }
                 break;
 
@@ -394,11 +504,20 @@ public class TareaBotController {
                 // This is only used for manual input, now handled by callbacks
                 try {
                     Long sprintId = Long.parseLong(messageText.trim());
+                    // Validate that sprint exists
+                    if (!sprintService.getAllSprints().stream().anyMatch(s -> s.getSprintID().equals(sprintId))) {
+                        BotHelper.sendMessageToTelegram(chatId,
+                                "❌ Sprint no encontrado. Por favor, selecciona de la lista.", bot);
+                        mostrarOpcionesSprints(chatId, bot);
+                        return;
+                    }
+
                     state.getTarea().setSprintID(sprintId);
                     state.setCurrentField("HORAS");
                     mostrarOpcionesHoras(chatId, bot);
                 } catch (NumberFormatException e) {
-                    BotHelper.sendMessageToTelegram(chatId, "❌ Ingresa un ID de sprint válido.", bot);
+                    BotHelper.sendMessageToTelegram(chatId, "❌ Formato inválido. Selecciona desde el menú.", bot);
+                    mostrarOpcionesSprints(chatId, bot);
                 }
                 break;
 
@@ -407,12 +526,20 @@ public class TareaBotController {
                 try {
                     int horas = Integer.parseInt(messageText.trim());
 
+                    if (horas <= 0) {
+                        BotHelper.sendMessageToTelegram(chatId,
+                                "⚠️ Las horas deben ser un número positivo.\n" +
+                                        "Por favor, ingresa un número válido de horas.",
+                                bot);
+                        return;
+                    }
+
                     if (horas > 4) {
                         BotHelper.sendMessageToTelegram(chatId,
                                 "⚠️ Las tareas no pueden tener más de 4 horas estimadas.\n" +
                                         "Por favor, ingresa un número menor o igual a 4.",
                                 bot);
-                        return; // 👈 no avanza, vuelve a pedir las horas
+                        return;
                     }
 
                     state.getTarea().setHorasEstimadas(horas);
@@ -421,6 +548,7 @@ public class TareaBotController {
                 } catch (NumberFormatException e) {
                     BotHelper.sendMessageToTelegram(chatId,
                             "❌ Ingresa un número válido de horas.", bot);
+                    mostrarOpcionesHoras(chatId, bot);
                 }
                 break;
 
@@ -428,6 +556,16 @@ public class TareaBotController {
                 // This is for manual date input
                 try {
                     LocalDate fecha = LocalDate.parse(messageText.trim(), DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+
+                    // Validate the date is not in the past
+                    if (fecha.isBefore(LocalDate.now())) {
+                        BotHelper.sendMessageToTelegram(chatId,
+                                "❌ La fecha no puede ser en el pasado.\n" +
+                                        "Por favor, ingresa una fecha futura:",
+                                bot);
+                        return;
+                    }
+
                     state.getTarea().setFechaEntrega(fecha.atStartOfDay().atOffset(ZoneOffset.UTC));
                     state.getTarea().setCompletado(0); // Set initial completion status
                     state.getTarea().setEstadoID(1L); // Set initial state ID
@@ -448,7 +586,10 @@ public class TareaBotController {
                     // Return to main menu
                     MenuBotHelper.showMainMenu(chatId, bot);
                 } catch (Exception e) {
-                    BotHelper.sendMessageToTelegram(chatId, "❌ Formato de fecha inválido. Usa DD/MM/YYYY", bot);
+                    BotHelper.sendMessageToTelegram(chatId,
+                            "❌ Formato de fecha inválido. Usa DD/MM/YYYY\n" +
+                                    "Por ejemplo: 31/12/2023",
+                            bot);
                 }
                 break;
 
@@ -456,6 +597,16 @@ public class TareaBotController {
                 // Special case for manual date entry
                 try {
                     LocalDate fecha = LocalDate.parse(messageText.trim(), DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+
+                    // Validate the date is not in the past
+                    if (fecha.isBefore(LocalDate.now())) {
+                        BotHelper.sendMessageToTelegram(chatId,
+                                "❌ La fecha no puede ser en el pasado.\n" +
+                                        "Por favor, ingresa una fecha futura:",
+                                bot);
+                        return;
+                    }
+
                     state.getTarea().setFechaEntrega(fecha.atStartOfDay().atOffset(ZoneOffset.UTC));
                     state.getTarea().setCompletado(0);
                     state.getTarea().setEstadoID(1L);
@@ -476,9 +627,59 @@ public class TareaBotController {
                     // Return to main menu
                     MenuBotHelper.showMainMenu(chatId, bot);
                 } catch (Exception e) {
-                    BotHelper.sendMessageToTelegram(chatId, "❌ Formato de fecha inválido. Usa DD/MM/YYYY", bot);
+                    BotHelper.sendMessageToTelegram(chatId,
+                            "❌ Formato de fecha inválido. Usa DD/MM/YYYY\n" +
+                                    "Por ejemplo: 31/12/2023",
+                            bot);
                 }
                 break;
+
+            default:
+                BotHelper.sendMessageToTelegram(chatId,
+                        "❌ Error en el proceso de creación. Volviendo al menú principal.", bot);
+                TareaCreationManager.clearState(chatId);
+                MenuBotHelper.showMainMenu(chatId, bot);
+                break;
+        }
+    }
+
+    private void mostrarOpcionesPrioridad(Long chatId, TelegramLongPollingBot bot) {
+        // Crear teclado inline
+        InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+
+        // Single row with 3 priority options
+        List<InlineKeyboardButton> row = new ArrayList<>();
+
+        InlineKeyboardButton buttonBaja = new InlineKeyboardButton();
+        buttonBaja.setText("⬇️ BAJA");
+        buttonBaja.setCallbackData("PRIORIDAD_BAJA");
+
+        InlineKeyboardButton buttonMedia = new InlineKeyboardButton();
+        buttonMedia.setText("↔️ MEDIA");
+        buttonMedia.setCallbackData("PRIORIDAD_MEDIA");
+
+        InlineKeyboardButton buttonAlta = new InlineKeyboardButton();
+        buttonAlta.setText("⬆️ ALTA");
+        buttonAlta.setCallbackData("PRIORIDAD_ALTA");
+
+        row.add(buttonBaja);
+        row.add(buttonMedia);
+        row.add(buttonAlta);
+        rowsInline.add(row);
+
+        markupInline.setKeyboard(rowsInline);
+
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText("📌 *Selecciona la prioridad para esta tarea:*");
+        message.setParseMode("Markdown");
+        message.setReplyMarkup(markupInline);
+
+        try {
+            bot.execute(message);
+        } catch (Exception e) {
+            logger.error("Error mostrando opciones de prioridad", e);
         }
     }
 
@@ -903,73 +1104,166 @@ public class TareaBotController {
 
         if (state == null) {
             BotHelper.sendMessageToTelegram(chatId, "❌ No hay una tarea en creación.", bot);
+            MenuBotHelper.showMainMenu(chatId, bot);
             return;
         }
 
-        if (callbackData.startsWith("USUARIO_")) {
-            // Handle user selection
-            try {
-                Long userId = Long.parseLong(callbackData.substring("USUARIO_".length()));
-                state.getTarea().setUsuarioID(userId);
-                state.setCurrentField("SPRINT");
-                mostrarOpcionesSprints(chatId, bot);
-            } catch (NumberFormatException e) {
-                BotHelper.sendMessageToTelegram(chatId, "❌ Error al seleccionar usuario.", bot);
+        try {
+            // Handle calendar navigation
+            if (callbackData.startsWith("CAL_PREV_") || callbackData.startsWith("CAL_NEXT_")) {
+                String[] parts = callbackData.split("_");
+                int year = Integer.parseInt(parts[2]);
+                int month = Integer.parseInt(parts[3]);
+
+                // Calculate new month and year
+                if (callbackData.startsWith("CAL_PREV_")) {
+                    // Previous month
+                    month--;
+                    if (month < 1) {
+                        month = 12;
+                        year--;
+                    }
+                } else {
+                    // Next month
+                    month++;
+                    if (month > 12) {
+                        month = 1;
+                        year++;
+                    }
+                }
+
+                // Show the calendar for the new month
+                showCalendar(chatId, bot, year, month);
+                return;
+            } else if (callbackData.equals("CAL_NONE")) {
+                // Ignore button presses on non-functional buttons
+                return;
             }
-        } else if (callbackData.startsWith("SPRINT_")) {
-            // Handle sprint selection
-            try {
-                Long sprintId = Long.parseLong(callbackData.substring("SPRINT_".length()));
-                state.getTarea().setSprintID(sprintId);
-                state.setCurrentField("HORAS");
-                mostrarOpcionesHoras(chatId, bot);
-            } catch (NumberFormatException e) {
-                BotHelper.sendMessageToTelegram(chatId, "❌ Error al seleccionar sprint.", bot);
-            }
-        } else if (callbackData.startsWith("HORAS_")) {
-            // Handle hours selection
-            try {
-                int horas = Integer.parseInt(callbackData.substring("HORAS_".length()));
-                state.getTarea().setHorasEstimadas(horas);
-                state.setCurrentField("FECHA");
-                mostrarOpcionesFecha(chatId, bot);
-            } catch (NumberFormatException e) {
-                BotHelper.sendMessageToTelegram(chatId, "❌ Error al seleccionar horas.", bot);
-            }
-        } else if (callbackData.equals("FECHA_MANUAL")) {
-            // Switch to manual date entry mode
-            state.setCurrentField("FECHA_MANUAL");
-            BotHelper.sendMessageToTelegram(chatId,
-                    "📅 Ingresa la fecha en formato *DD/MM/YYYY*:", bot);
-        } else if (callbackData.startsWith("FECHA_")) {
-            // Handle date selection
-            try {
-                String dateStr = callbackData.substring("FECHA_".length());
-                LocalDate fecha = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
 
-                state.getTarea().setFechaEntrega(fecha.atStartOfDay().atOffset(ZoneOffset.UTC));
-                state.getTarea().setCompletado(0);
-                state.getTarea().setEstadoID(1L);
+            if (callbackData.startsWith("PRIORIDAD_")) {
+                // Handle priority selection
+                String prioridad = callbackData.substring("PRIORIDAD_".length());
+                if (prioridad.equals("BAJA") || prioridad.equals("MEDIA") || prioridad.equals("ALTA")) {
+                    state.getTarea().setPrioridad(prioridad);
+                    state.setCurrentField("USUARIO");
+                    mostrarOpcionesUsuarios(chatId, bot);
+                } else {
+                    BotHelper.sendMessageToTelegram(chatId, "❌ Prioridad no válida. Por favor, selecciona una opción.",
+                            bot);
+                    mostrarOpcionesPrioridad(chatId, bot);
+                }
+            } else if (callbackData.startsWith("USUARIO_")) {
+                // Handle user selection
+                try {
+                    Long userId = Long.parseLong(callbackData.substring("USUARIO_".length()));
+                    // Validate that user exists
+                    if (!usuarioService.getAllUsuarios().stream().anyMatch(u -> u.getUsuarioID().equals(userId))) {
+                        BotHelper.sendMessageToTelegram(chatId,
+                                "❌ Usuario no encontrado. Por favor, selecciona de la lista.", bot);
+                        mostrarOpcionesUsuarios(chatId, bot);
+                        return;
+                    }
 
-                // Create the task
-                tareaService.createTarea(state.getTarea());
+                    state.getTarea().setUsuarioID(userId);
+                    state.setCurrentField("SPRINT");
+                    mostrarOpcionesSprints(chatId, bot);
+                } catch (NumberFormatException e) {
+                    BotHelper.sendMessageToTelegram(chatId, "❌ Error al seleccionar usuario.", bot);
+                    mostrarOpcionesUsuarios(chatId, bot);
+                }
+            } else if (callbackData.startsWith("SPRINT_")) {
+                // Handle sprint selection
+                try {
+                    Long sprintId = Long.parseLong(callbackData.substring("SPRINT_".length()));
+                    // Validate that sprint exists
+                    if (!sprintService.getAllSprints().stream().anyMatch(s -> s.getSprintID().equals(sprintId))) {
+                        BotHelper.sendMessageToTelegram(chatId,
+                                "❌ Sprint no encontrado. Por favor, selecciona de la lista.", bot);
+                        mostrarOpcionesSprints(chatId, bot);
+                        return;
+                    }
 
-                // Clear the creation state
-                TareaCreationManager.clearState(chatId);
+                    state.getTarea().setSprintID(sprintId);
+                    state.setCurrentField("HORAS");
+                    mostrarOpcionesHoras(chatId, bot);
+                } catch (NumberFormatException e) {
+                    BotHelper.sendMessageToTelegram(chatId, "❌ Error al seleccionar sprint.", bot);
+                    mostrarOpcionesSprints(chatId, bot);
+                }
+            } else if (callbackData.startsWith("HORAS_")) {
+                // Handle hours selection
+                try {
+                    int horas = Integer.parseInt(callbackData.substring("HORAS_".length()));
 
-                // Show success message
+                    if (horas <= 0 || horas > 4) {
+                        BotHelper.sendMessageToTelegram(chatId, "❌ Valor de horas inválido.", bot);
+                        mostrarOpcionesHoras(chatId, bot);
+                        return;
+                    }
+
+                    state.getTarea().setHorasEstimadas(horas);
+                    state.setCurrentField("FECHA");
+                    mostrarOpcionesFecha(chatId, bot);
+                } catch (NumberFormatException e) {
+                    BotHelper.sendMessageToTelegram(chatId, "❌ Error al seleccionar horas.", bot);
+                    mostrarOpcionesHoras(chatId, bot);
+                }
+            } else if (callbackData.equals("FECHA_MANUAL")) {
+                // Switch to manual date entry mode
+                state.setCurrentField("FECHA_MANUAL");
                 BotHelper.sendMessageToTelegram(chatId,
-                        "✅ ¡Tarea creada exitosamente!\n"
-                                + "🔸 " + state.getTarea().getTareaNombre() + "\n"
-                                + "📅 Fecha entrega: " + fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                        "📅 Ingresa la fecha en formato *DD/MM/YYYY*:\n" +
+                                "Por ejemplo: 31/12/2023",
                         bot);
+            } else if (callbackData.startsWith("FECHA_")) {
+                // Handle date selection
+                try {
+                    String dateStr = callbackData.substring("FECHA_".length());
+                    LocalDate fecha = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
 
-                // Return to main menu
+                    // Validate the date is not in the past
+                    if (fecha.isBefore(LocalDate.now())) {
+                        BotHelper.sendMessageToTelegram(chatId, "❌ La fecha seleccionada está en el pasado.", bot);
+                        mostrarOpcionesFecha(chatId, bot);
+                        return;
+                    }
+
+                    state.getTarea().setFechaEntrega(fecha.atStartOfDay().atOffset(ZoneOffset.UTC));
+                    state.getTarea().setCompletado(0);
+                    state.getTarea().setEstadoID(1L);
+
+                    // Create the task
+                    tareaService.createTarea(state.getTarea());
+
+                    // Clear the creation state
+                    TareaCreationManager.clearState(chatId);
+
+                    // Show success message
+                    BotHelper.sendMessageToTelegram(chatId,
+                            "✅ ¡Tarea creada exitosamente!\n"
+                                    + "🔸 " + state.getTarea().getTareaNombre() + "\n"
+                                    + "📅 Fecha entrega: " + fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                            bot);
+
+                    // Return to main menu
+                    MenuBotHelper.showMainMenu(chatId, bot);
+                } catch (Exception e) {
+                    logger.error("Error al procesar fecha: " + e.getMessage());
+                    BotHelper.sendMessageToTelegram(chatId, "❌ Error al procesar la fecha seleccionada.", bot);
+                    mostrarOpcionesFecha(chatId, bot);
+                }
+            } else {
+                BotHelper.sendMessageToTelegram(chatId, "❌ Operación no reconocida.", bot);
                 MenuBotHelper.showMainMenu(chatId, bot);
-            } catch (Exception e) {
-                logger.error("Error al procesar fecha: " + e.getMessage());
-                BotHelper.sendMessageToTelegram(chatId, "❌ Error al procesar la fecha seleccionada.", bot);
             }
+        } catch (Exception e) {
+            logger.error("Error en handleCreationCallback: " + e.getMessage(), e);
+            BotHelper.sendMessageToTelegram(chatId,
+                    "❌ Ha ocurrido un error inesperado.\n" +
+                            "Por favor, inténtalo de nuevo con /start",
+                    bot);
+            TareaCreationManager.clearState(chatId);
+            MenuBotHelper.showMainMenu(chatId, bot);
         }
     }
 }

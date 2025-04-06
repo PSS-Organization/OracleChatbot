@@ -59,7 +59,7 @@ public class TareaService {
 
         System.out.println("✅ Guardando tarea en BD: " + tarea.toString());
 
-        return tareaRepository.save(tarea);  // ✅ Devuelve solo la tarea creada
+        return tareaRepository.save(tarea); // ✅ Devuelve solo la tarea creada
     }
 
     public Tarea updateTarea(Long id, Tarea tarea) {

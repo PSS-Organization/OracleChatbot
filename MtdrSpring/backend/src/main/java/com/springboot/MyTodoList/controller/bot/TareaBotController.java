@@ -58,6 +58,7 @@ public class TareaBotController {
                 || messageText.equals("📊 Ver por Estado")
                 || messageText.startsWith("ESTADO_") // For state filtering
                 || messageText.equals("📋 Ver Todas las Tareas")
+                || messageText.equals("VER_TODAS_TAREAS")
                 || messageText.startsWith("✅ ")
                 || messageText.equals("COMPLETAR_TAREAS")
                 || messageText.equals("HISTORIAL_COMPLETADAS")
@@ -66,10 +67,42 @@ public class TareaBotController {
     }
 
     public void handleMessage(String messageText, Long chatId, Long telegramId, TelegramLongPollingBot bot) {
-        if (awaitingHoursReal.containsKey(chatId)) {
+        logger.info("Handling message: '" + messageText + "' from chatId: " + chatId);
+
+        // First check for specific commands that should bypass other state checks
+        if (messageText.equals(BotLabels.SHOW_MAIN_SCREEN.getLabel()) ||
+                messageText.equals("/start")) {
+            // Clear any pending states to avoid issues
+            if (awaitingHoursReal.containsKey(chatId)) {
+                awaitingHoursReal.remove(chatId);
+                completionTasks.remove(chatId);
+            }
+            if (TareaCreationManager.isInCreationProcess(chatId)) {
+                TareaCreationManager.clearState(chatId);
+            }
+            MenuBotHelper.showMainMenu(chatId, bot);
+            return;
+        }
+
+        // Handle specific menu actions and bypass hoursReal check
+        if (messageText.equals("📋 Ver Todas las Tareas") || messageText.equals("VER_TODAS_TAREAS")) {
+            mostrarTodasLasTareas(chatId, bot);
+            return;
+        }
+
+        // Now process hours input if we're waiting for it
+        if (awaitingHoursReal.containsKey(chatId) && awaitingHoursReal.get(chatId)) {
             try {
                 int horasReales = Integer.parseInt(messageText);
                 Tarea tarea = completionTasks.get(chatId);
+                if (tarea == null) {
+                    BotHelper.sendMessageToTelegram(chatId,
+                            "❌ Error al procesar la tarea. Volviendo al menú principal.", bot);
+                    awaitingHoursReal.remove(chatId);
+                    MenuBotHelper.showMainMenu(chatId, bot);
+                    return;
+                }
+
                 tarea.setHorasReales(horasReales);
                 tarea.setCompletado(1);
                 tarea.setEstadoID(3L);
@@ -86,7 +119,7 @@ public class TareaBotController {
                 MenuBotHelper.showMainMenu(chatId, bot);
                 return;
             } catch (NumberFormatException e) {
-                BotHelper.sendMessageToTelegram(chatId, "❌ Por favor ingresa un número válido.", bot);
+                BotHelper.sendMessageToTelegram(chatId, "❌ Por favor ingresa un número válido de horas.", bot);
                 return;
             }
         }
@@ -97,10 +130,8 @@ public class TareaBotController {
             return;
         }
 
+        // Process other menu options
         switch (messageText) {
-            case "📋 Ver Todas las Tareas":
-                mostrarTodasLasTareas(chatId, bot);
-                break;
             case "➕ Nueva Tarea":
                 solicitarNombreTarea(chatId, bot);
                 break;
@@ -108,12 +139,15 @@ public class TareaBotController {
                 showUserTasks(chatId, telegramId, bot);
                 break;
             case "✅ Completar Tareas":
+            case "COMPLETAR_TAREAS":
                 showTaskCompletionMenu(chatId, telegramId, bot);
                 break;
             case "📋 Historial Completadas":
+            case "HISTORIAL_COMPLETADAS":
                 showCompletedTasks(chatId, telegramId, bot);
                 break;
             case "📊 Ver por Estado":
+            case "VER_POR_ESTADO":
                 showStateFilterMenu(chatId, telegramId, bot);
                 break;
             default:
@@ -121,44 +155,185 @@ public class TareaBotController {
                     handleTaskCompletion(messageText, chatId, telegramId, bot);
                 } else if (messageText.startsWith("ESTADO_")) {
                     showTasksByState(messageText.substring(7), chatId, telegramId, bot);
+                } else {
+                    // Unknown command
+                    BotHelper.sendMessageToTelegram(chatId,
+                            "⚠️ Comando no reconocido. Usa /start para ver el menú principal.", bot);
                 }
                 break;
         }
     }
 
     public void handleFallback(String messageText, Long chatId, TelegramLongPollingBot bot) {
+        // Importante: Registrar todos los mensajes que llegan a handleFallback para
+        // diagnóstico
+        logger.info("handleFallback recibido: '" + messageText + "' para chatId: " + chatId);
+
         if (TareaCreationManager.isInCreationProcess(chatId)) {
+            logger.info("Usuario en proceso de creación de tarea, delegando a handleTareaCreation");
             handleTareaCreation(messageText, chatId, bot);
         } else if (awaitingHoursReal.getOrDefault(chatId, false)) {
+            logger.info("Usuario está ingresando horas reales para completar tarea");
             handleRealHoursInput(messageText, chatId, bot);
         } else {
-            BotHelper.sendMessageToTelegram(chatId, "⚠️ No entendí ese mensaje. Usa /start para volver al menú.", bot);
+            // Mensaje más amigable en lugar de indicar que no se reconoce
+            logger.info("Mensaje no reconocido, mostrando opciones del menú");
+            BotHelper.sendMessageToTelegram(chatId, "Para continuar, por favor selecciona una opción del menú:", bot);
+            MenuBotHelper.showMainMenu(chatId, bot);
         }
     }
 
-    private void mostrarTodasLasTareas(Long chatId, TelegramLongPollingBot bot) {
-        List<Tarea> tareas = tareaService.getAllTareas();
-
-        if (tareas.isEmpty()) {
-            BotHelper.sendMessageToTelegram(chatId, "No hay tareas registradas.", bot);
-            return;
-        }
-
-        StringBuilder messageText = new StringBuilder("📋 *Lista de Tareas:*\n\n");
-        for (Tarea tarea : tareas) {
-            messageText.append("🔹 ").append(tarea.getTareaNombre()).append("\n")
-                    .append("📄 ").append(tarea.getDescripcion()).append("\n\n");
-        }
-
-        SendMessage message = new SendMessage();
-        message.setChatId(chatId);
-        message.setText(messageText.toString());
-        message.setParseMode("Markdown");
-
+    public void mostrarTodasLasTareas(Long chatId, TelegramLongPollingBot bot) {
+        logger.info("Iniciando mostrarTodasLasTareas para chatId: " + chatId);
         try {
+            logger.info("Obteniendo todas las tareas desde el servicio...");
+            List<Tarea> tareas = tareaService.getAllTareas();
+            logger.info("Tareas obtenidas: " + (tareas != null ? tareas.size() : "null"));
+
+            if (tareas == null || tareas.isEmpty()) {
+                logger.info("No hay tareas para mostrar");
+                BotHelper.sendMessageToTelegram(chatId, "No hay tareas registradas.", bot);
+                return;
+            }
+
+            logger.info("Construyendo mensaje con " + tareas.size() + " tareas");
+            StringBuilder messageText = new StringBuilder("📋 *Lista de Tareas:*\n\n");
+
+            for (Tarea tarea : tareas) {
+                try {
+                    // Add basic task information
+                    String nombre = tarea.getTareaNombre() != null ? tarea.getTareaNombre() : "Sin nombre";
+                    String descripcion = tarea.getDescripcion() != null ? tarea.getDescripcion() : "Sin descripción";
+
+                    messageText.append("🔹 ").append(nombre).append("\n")
+                            .append("📄 ").append(descripcion).append("\n");
+
+                    // Add information about user and sprint
+                    try {
+                        // Get user info, handling ResponseEntity properly
+                        if (tarea.getUsuarioID() != null) {
+                            ResponseEntity<Usuario> usuarioResponse = usuarioService
+                                    .getUsuarioById(tarea.getUsuarioID());
+                            if (usuarioResponse != null && usuarioResponse.getStatusCode().is2xxSuccessful()
+                                    && usuarioResponse.getBody() != null) {
+                                Usuario usuario = usuarioResponse.getBody();
+                                messageText.append("👤 Asignada a: ").append(usuario.getNombre()).append("\n");
+                            }
+                        }
+
+                        // Get sprint info, handling Optional properly
+                        if (tarea.getSprintID() != null) {
+                            Optional<Sprint> sprintOptional = sprintService.getSprintById(tarea.getSprintID());
+                            if (sprintOptional != null && sprintOptional.isPresent()) {
+                                Sprint sprint = sprintOptional.get();
+                                messageText.append("🏃 Sprint: ").append(sprint.getNombreSprint()).append("\n");
+                            }
+                        }
+                    } catch (Exception e) {
+                        logger.error("Error al obtener datos adicionales de la tarea ID: " +
+                                (tarea.getTareaID() != null ? tarea.getTareaID() : "desconocido"), e);
+                        // Continue without additional data
+                    }
+
+                    // Add a blank line between tasks for better readability
+                    messageText.append("\n");
+                } catch (Exception e) {
+                    logger.error("Error procesando tarea individual", e);
+                    // Skip this task and continue with the next one
+                }
+            }
+
+            // Check if we have any content after processing
+            if (messageText.length() <= 30) { // Just the header text
+                BotHelper.sendMessageToTelegram(chatId, "❌ No se pudieron procesar las tareas correctamente.", bot);
+                MenuBotHelper.showMainMenu(chatId, bot);
+                return;
+            }
+
+            // Check if message is too long - Telegram has 4096 character limit
+            if (messageText.length() > 4000) {
+                // Split message and send in chunks
+                int chunkCount = 1;
+                String fullMessage = messageText.toString();
+                BotHelper.sendMessageToTelegram(chatId, "📋 *Lista de Tareas (Parte 1):*", bot);
+
+                int start = 0;
+                while (start < fullMessage.length()) {
+                    int end = Math.min(start + 3800, fullMessage.length());
+                    if (end < fullMessage.length()) {
+                        // Find a good place to break the message (at a double newline)
+                        int breakPoint = fullMessage.lastIndexOf("\n\n", end);
+                        if (breakPoint > start + 100) { // At least send some substantial content
+                            end = breakPoint;
+                        }
+                    }
+
+                    String chunk = fullMessage.substring(start, end);
+                    BotHelper.sendMessageToTelegram(chatId, chunk, bot);
+
+                    start = end;
+                    if (start < fullMessage.length()) {
+                        chunkCount++;
+                        BotHelper.sendMessageToTelegram(chatId, "📋 *Lista de Tareas (Parte " + chunkCount + "):*",
+                                bot);
+                    }
+                }
+
+                // Send back button in a separate message
+                SendMessage backButtonMessage = new SendMessage();
+                backButtonMessage.setChatId(chatId);
+                backButtonMessage.setText("Selecciona una opción:");
+
+                // Add back button
+                InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+                List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+
+                List<InlineKeyboardButton> row = new ArrayList<>();
+                InlineKeyboardButton menuButton = new InlineKeyboardButton();
+                menuButton.setText("🔙 Volver al Menú");
+                menuButton.setCallbackData("MENU_PRINCIPAL");
+                row.add(menuButton);
+                rowsInline.add(row);
+
+                markupInline.setKeyboard(rowsInline);
+                backButtonMessage.setReplyMarkup(markupInline);
+
+                try {
+                    bot.execute(backButtonMessage);
+                } catch (Exception e) {
+                    logger.error("Error al enviar botón de retorno", e);
+                    BotHelper.sendMessageToTelegram(chatId, "Usa /start para volver al menú principal.", bot);
+                }
+
+                return;
+            }
+
+            // Add back button
+            InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+            List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+
+            List<InlineKeyboardButton> row = new ArrayList<>();
+            InlineKeyboardButton menuButton = new InlineKeyboardButton();
+            menuButton.setText("🔙 Volver al Menú");
+            menuButton.setCallbackData("MENU_PRINCIPAL");
+            row.add(menuButton);
+            rowsInline.add(row);
+
+            markupInline.setKeyboard(rowsInline);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText(messageText.toString());
+            message.setParseMode("Markdown");
+            message.setReplyMarkup(markupInline);
+
+            logger.info("Enviando mensaje final con todas las tareas. Longitud del mensaje: " + messageText.length());
             bot.execute(message);
+            logger.info("Mensaje enviado exitosamente");
         } catch (Exception e) {
             logger.error("Error mostrando lista de tareas", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al obtener la lista de tareas.", bot);
+            MenuBotHelper.showMainMenu(chatId, bot);
         }
     }
 
@@ -1264,6 +1439,47 @@ public class TareaBotController {
                     bot);
             TareaCreationManager.clearState(chatId);
             MenuBotHelper.showMainMenu(chatId, bot);
+        }
+    }
+
+    // Método de debugging para diagnóstico
+    public void debugTareas(Long chatId, TelegramLongPollingBot bot) {
+        logger.info("Iniciando diagnóstico de tareas...");
+        try {
+            // Verificar que el servicio de tareas funciona
+            logger.info("Verificando servicio de tareas...");
+            List<Tarea> tareas = tareaService.getAllTareas();
+
+            int totalTareas = (tareas != null) ? tareas.size() : 0;
+            logger.info("Total de tareas recuperadas: " + totalTareas);
+
+            StringBuilder debugInfo = new StringBuilder();
+            debugInfo.append("📊 *Diagnóstico del Sistema:*\n\n");
+            debugInfo.append("Total de tareas: ").append(totalTareas).append("\n\n");
+
+            if (tareas != null && !tareas.isEmpty()) {
+                // Mostrar resumen de la primera tarea como ejemplo
+                Tarea ejemploTarea = tareas.get(0);
+                debugInfo.append("*Ejemplo de Tarea:*\n");
+                debugInfo.append("ID: ").append(ejemploTarea.getTareaID()).append("\n");
+                debugInfo.append("Nombre: ").append(ejemploTarea.getTareaNombre()).append("\n");
+                debugInfo.append("Descripción: ").append(ejemploTarea.getDescripcion()).append("\n");
+                debugInfo.append("Usuario ID: ").append(ejemploTarea.getUsuarioID()).append("\n");
+                debugInfo.append("Sprint ID: ").append(ejemploTarea.getSprintID()).append("\n");
+                debugInfo.append("Estado ID: ").append(ejemploTarea.getEstadoID()).append("\n");
+                debugInfo.append("Completado: ").append(ejemploTarea.getCompletado()).append("\n");
+            } else {
+                debugInfo.append("❌ *No hay tareas en el sistema*\n");
+                debugInfo.append("Verifique la conexión a la base de datos y que existan registros.\n");
+            }
+
+            // Enviar información de diagnóstico
+            BotHelper.sendMessageToTelegram(chatId, debugInfo.toString(), bot);
+
+        } catch (Exception e) {
+            logger.error("Error durante el diagnóstico", e);
+            BotHelper.sendMessageToTelegram(chatId,
+                    "❌ Error durante el diagnóstico: " + e.getMessage(), bot);
         }
     }
 }

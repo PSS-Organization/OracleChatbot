@@ -21,6 +21,7 @@ import com.springboot.MyTodoList.util.BotCommands;
 import com.springboot.MyTodoList.util.BotHelper;
 import com.springboot.MyTodoList.util.BotLabels;
 import com.springboot.MyTodoList.util.RegistroManager;
+import com.springboot.MyTodoList.util.TareaCreationManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -96,9 +97,37 @@ public class MainBotController extends TelegramLongPollingBot {
             logger.error("Error al responder callback query", e);
         }
 
+        // Process callbacks for viewing tasks by sprint - check this FIRST
+        if (callbackData.startsWith("SPRINT_VER_")) {
+            try {
+                logger.info("Recibido callback para ver tareas de un sprint específico: " + callbackData);
+                Long sprintId = Long.parseLong(callbackData.substring("SPRINT_VER_".length()));
+
+                // Asegurarse de que no hay una tarea en creación activa antes de mostrar tareas
+                // de sprint
+                if (TareaCreationManager.isInCreationProcess(chatId)) {
+                    logger.warn("Había una tarea en creación activa, limpiando estado antes de mostrar sprint");
+                    TareaCreationManager.clearState(chatId);
+                }
+
+                // Ahora es seguro mostrar las tareas del sprint
+                sprintBotController.mostrarTareasPorSprint(sprintId, chatId, this);
+            } catch (NumberFormatException e) {
+                logger.error("Error al parsear ID de sprint: " + e.getMessage());
+                BotHelper.sendMessageToTelegram(chatId, "❌ Error al obtener tareas del sprint.", this);
+                MenuBotHelper.showMainMenu(chatId, this);
+            } catch (Exception e) {
+                logger.error("Error inesperado al mostrar tareas de sprint: " + e.getMessage(), e);
+                BotHelper.sendMessageToTelegram(chatId, "❌ Error al procesar el sprint. Volviendo al menú principal.",
+                        this);
+                MenuBotHelper.showMainMenu(chatId, this);
+            }
+            return;
+        }
+
         // Process callbacks for task creation
         if (callbackData.startsWith("USUARIO_") ||
-                callbackData.startsWith("SPRINT_") ||
+                (callbackData.startsWith("SPRINT_") && !callbackData.startsWith("SPRINT_VER_")) ||
                 callbackData.startsWith("HORAS_") ||
                 callbackData.startsWith("FECHA_") ||
                 callbackData.equals("FECHA_MANUAL") ||
@@ -124,7 +153,18 @@ public class MainBotController extends TelegramLongPollingBot {
 
         switch (callbackData) {
             case "VER_TODAS_TAREAS":
-                tareaBotController.handleMessage("📋 Ver Todas las Tareas", chatId, telegramId, this);
+                // Direct call to display all tasks to avoid routing issues
+                logger.info(
+                        "Callback recibido para VER_TODAS_TAREAS. Llamando directamente a mostrarTodasLasTareas...");
+                try {
+                    tareaBotController.mostrarTodasLasTareas(chatId, this);
+                    logger.info("mostrarTodasLasTareas ejecutado correctamente");
+                } catch (Exception e) {
+                    logger.error("Error al ejecutar mostrarTodasLasTareas: " + e.getMessage(), e);
+                    BotHelper.sendMessageToTelegram(chatId,
+                            "❌ Error al mostrar las tareas. Volviendo al menú principal.", this);
+                    MenuBotHelper.showMainMenu(chatId, this);
+                }
                 break;
             case "NUEVA_TAREA":
                 tareaBotController.handleMessage("➕ Nueva Tarea", chatId, telegramId, this);
@@ -133,13 +173,41 @@ public class MainBotController extends TelegramLongPollingBot {
                 tareaBotController.handleMessage("👤 Mis Tareas", chatId, telegramId, this);
                 break;
             case "VER_POR_SPRINT":
-                sprintBotController.handleMessage("🏃 Ver por Sprint", chatId, this);
+                try {
+                    logger.info("Callback recibido para VER_POR_SPRINT");
+
+                    // Limpiar cualquier estado de creación de tarea activo
+                    if (TareaCreationManager.isInCreationProcess(chatId)) {
+                        logger.warn("Había una tarea en creación activa, limpiando estado antes de mostrar sprints");
+                        TareaCreationManager.clearState(chatId);
+                    }
+
+                    sprintBotController.handleMessage("🏃 Ver por Sprint", chatId, this);
+                } catch (Exception e) {
+                    logger.error("Error al mostrar sprints: " + e.getMessage(), e);
+                    BotHelper.sendMessageToTelegram(chatId,
+                            "❌ Error al obtener los sprints. Volviendo al menú principal.", this);
+                    MenuBotHelper.showMainMenu(chatId, this);
+                }
                 break;
             case "VER_POR_ESTADO":
                 tareaBotController.handleMessage("📊 Ver por Estado", chatId, telegramId, this);
                 break;
             case "MENU_PRINCIPAL":
-                MenuBotHelper.showMainMenu(chatId, this);
+                try {
+                    logger.info("Mostrando menú principal para chatId: " + chatId);
+                    MenuBotHelper.showMainMenu(chatId, this);
+                } catch (Exception e) {
+                    logger.error("Error al mostrar menú principal", e);
+                    // Intento de recuperación con un mensaje más simple
+                    try {
+                        BotHelper.sendMessageToTelegram(chatId,
+                                "❌ Error al mostrar el menú principal.\nPor favor, escribe /start para reiniciar.",
+                                this);
+                    } catch (Exception ex) {
+                        logger.error("Error fatal al comunicarse con el usuario", ex);
+                    }
+                }
                 break;
             case "COMPLETAR_TAREAS":
                 tareaBotController.handleMessage("✅ Completar Tareas", chatId, telegramId, this);
@@ -208,8 +276,12 @@ public class MainBotController extends TelegramLongPollingBot {
             return;
         }
 
-        // Rest of your existing message handling code...
-        logger.info("Mensaje recibido: " + messageText);
+        // Comando especial de diagnóstico (solo para desarrollo)
+        if (messageText.equals("/debug_tasks")) {
+            logger.info("Comando de diagnóstico recibido de chatId: " + chatId);
+            tareaBotController.debugTareas(chatId, this);
+            return;
+        }
 
         // 🔒 Paso 1: Verificar si el usuario está en proceso de enviar su teléfono
         if (VinculacionManager.estaEsperandoTelefono(chatId)) {

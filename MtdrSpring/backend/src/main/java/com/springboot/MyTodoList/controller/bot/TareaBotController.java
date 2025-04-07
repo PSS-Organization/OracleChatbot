@@ -57,8 +57,8 @@ public class TareaBotController {
                 || messageText.equals("📋 Historial Completadas")
                 || messageText.equals("📊 Ver por Estado")
                 || messageText.startsWith("ESTADO_") // For state filtering
-                || messageText.equals("📋 Ver Todas las Tareas")
-                || messageText.equals("VER_TODAS_TAREAS")
+                || messageText.equals("👥 Ver Tareas")
+                || messageText.equals("VER_TAREAS")
                 || messageText.startsWith("✅ ")
                 || messageText.equals("COMPLETAR_TAREAS")
                 || messageText.equals("HISTORIAL_COMPLETADAS")
@@ -84,9 +84,8 @@ public class TareaBotController {
             return;
         }
 
-        // Handle specific menu actions and bypass hoursReal check
-        if (messageText.equals("📋 Ver Todas las Tareas") || messageText.equals("VER_TODAS_TAREAS")) {
-            mostrarTodasLasTareas(chatId, bot);
+        if (messageText.equals("👥 Ver Tareas") || messageText.equals("VER_TAREAS")) {
+            mostrarSeleccionUsuarios(chatId, bot);
             return;
         }
 
@@ -205,8 +204,19 @@ public class TareaBotController {
                     String nombre = tarea.getTareaNombre() != null ? tarea.getTareaNombre() : "Sin nombre";
                     String descripcion = tarea.getDescripcion() != null ? tarea.getDescripcion() : "Sin descripción";
 
+                    // Format date if available
+                    String formattedDate = "";
+                    if (tarea.getFechaEntrega() != null) {
+                        formattedDate = "📅 Entrega: " + tarea.getFechaEntrega().toLocalDate()
+                                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + "\n";
+                    }
+
                     messageText.append("🔹 ").append(nombre).append("\n")
                             .append("📄 ").append(descripcion).append("\n");
+
+                    if (!formattedDate.isEmpty()) {
+                        messageText.append(formattedDate);
+                    }
 
                     // Add information about user and sprint
                     try {
@@ -755,7 +765,7 @@ public class TareaBotController {
                     BotHelper.sendMessageToTelegram(chatId,
                             "✅ ¡Tarea creada exitosamente!\n"
                                     + "🔸 " + state.getTarea().getTareaNombre() + "\n"
-                                    + "📅 Fecha entrega: " + fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                                    + "📅 Fecha entrega: " + fecha.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
                             bot);
 
                     // Return to main menu
@@ -796,7 +806,7 @@ public class TareaBotController {
                     BotHelper.sendMessageToTelegram(chatId,
                             "✅ ¡Tarea creada exitosamente!\n"
                                     + "🔸 " + state.getTarea().getTareaNombre() + "\n"
-                                    + "📅 Fecha entrega: " + fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                                    + "📅 Fecha entrega: " + fecha.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
                             bot);
 
                     // Return to main menu
@@ -882,9 +892,12 @@ public class TareaBotController {
             messageBuilder.append("👤 *MIS TAREAS:*\n\n");
             for (Tarea tarea : tareas) {
                 String estado = tarea.getCompletado() == 1 ? "✅" : "⏳";
+                String formattedDate = tarea.getFechaEntrega() != null
+                        ? tarea.getFechaEntrega().toLocalDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                        : "Sin fecha";
                 messageBuilder.append(estado).append(" *").append(tarea.getTareaNombre()).append("*\n")
                         .append("📝 ").append(tarea.getDescripcion()).append("\n")
-                        .append("📅 Entrega: ").append(tarea.getFechaEntrega()).append("\n\n");
+                        .append("📅 Entrega: ").append(formattedDate).append("\n\n");
             }
 
             SendMessage message = new SendMessage();
@@ -906,15 +919,9 @@ public class TareaBotController {
 
             // Fila 2
             List<InlineKeyboardButton> row2 = new ArrayList<>();
-            InlineKeyboardButton historialButton = new InlineKeyboardButton();
-            historialButton.setText("📋 Historial Completadas");
-            historialButton.setCallbackData("HISTORIAL_COMPLETADAS");
-
             InlineKeyboardButton estadoButton = new InlineKeyboardButton();
             estadoButton.setText("📊 Ver por Estado");
             estadoButton.setCallbackData("VER_POR_ESTADO");
-
-            row2.add(historialButton);
             row2.add(estadoButton);
             rowsInline.add(row2);
 
@@ -1093,7 +1100,10 @@ public class TareaBotController {
             for (Tarea tarea : tareasCompletadas) {
                 messageBuilder.append("🔸 ").append(tarea.getTareaNombre()).append("\n")
                         .append("📝 ").append(tarea.getDescripcion()).append("\n")
-                        .append("📅 Fecha entrega: ").append(tarea.getFechaEntrega()).append("\n")
+                        .append("📅 Fecha entrega: ")
+                        .append(tarea.getFechaEntrega() != null ? tarea.getFechaEntrega().toLocalDate()
+                                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "Sin fecha")
+                        .append("\n")
                         .append("⏱️ Horas estimadas: ").append(tarea.getHorasEstimadas()).append("\n")
                         .append("⏱️ Horas reales: ").append(tarea.getHorasReales()).append("\n")
                         .append("Estado: COMPLETADA\n\n");
@@ -1214,8 +1224,9 @@ public class TareaBotController {
             for (Tarea tarea : tareasFiltradas) {
                 messageBuilder.append("🔸 *").append(tarea.getTareaNombre()).append("*\n")
                         .append("📝 ").append(tarea.getDescripcion()).append("\n")
-                        .append("📅 Entrega: ").append(tarea.getFechaEntrega().toLocalDate()
-                                .format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
+                        .append("📅 Entrega: ")
+                        .append(tarea.getFechaEntrega() != null ? tarea.getFechaEntrega().toLocalDate()
+                                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "Sin fecha")
                         .append("\n")
                         .append("⏱️ Horas estimadas: ").append(tarea.getHorasEstimadas()).append("\n");
 
@@ -1417,7 +1428,7 @@ public class TareaBotController {
                     BotHelper.sendMessageToTelegram(chatId,
                             "✅ ¡Tarea creada exitosamente!\n"
                                     + "🔸 " + state.getTarea().getTareaNombre() + "\n"
-                                    + "📅 Fecha entrega: " + fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                                    + "📅 Fecha entrega: " + fecha.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
                             bot);
 
                     // Return to main menu
@@ -1480,6 +1491,264 @@ public class TareaBotController {
             logger.error("Error durante el diagnóstico", e);
             BotHelper.sendMessageToTelegram(chatId,
                     "❌ Error durante el diagnóstico: " + e.getMessage(), bot);
+        }
+    }
+
+    private void mostrarSeleccionUsuarios(Long chatId, TelegramLongPollingBot bot) {
+        try {
+            logger.info("Mostrando selección de usuarios para ver tareas");
+            List<Usuario> usuarios = usuarioService.getAllUsuarios();
+
+            if (usuarios == null || usuarios.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId, "❌ No hay usuarios registrados en el sistema.", bot);
+                MenuBotHelper.showMainMenu(chatId, bot);
+                return;
+            }
+
+            // Crear teclado inline
+            InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+            List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+
+            // Agregar cada usuario como un botón
+            for (Usuario usuario : usuarios) {
+                List<InlineKeyboardButton> row = new ArrayList<>();
+                InlineKeyboardButton button = new InlineKeyboardButton();
+                button.setText(usuario.getNombre());
+                button.setCallbackData("VER_TAREAS_USER_" + usuario.getUsuarioID());
+                row.add(button);
+                rowsInline.add(row);
+            }
+
+            // Botón para volver al menú principal
+            List<InlineKeyboardButton> lastRow = new ArrayList<>();
+            InlineKeyboardButton menuButton = new InlineKeyboardButton();
+            menuButton.setText("🔙 Volver al Menú");
+            menuButton.setCallbackData("MENU_PRINCIPAL");
+            lastRow.add(menuButton);
+            rowsInline.add(lastRow);
+
+            markupInline.setKeyboard(rowsInline);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText("👥 *Selecciona un usuario para ver sus tareas:*");
+            message.setParseMode("Markdown");
+            message.setReplyMarkup(markupInline);
+
+            bot.execute(message);
+        } catch (Exception e) {
+            logger.error("Error al mostrar selección de usuarios", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al cargar la lista de usuarios.", bot);
+            MenuBotHelper.showMainMenu(chatId, bot);
+        }
+    }
+
+    /**
+     * Muestra las tareas de un usuario específico
+     * 
+     * @param userId ID del usuario
+     * @param chatId ID del chat
+     * @param bot    Bot de Telegram
+     */
+    public void mostrarTareasUsuario(Long userId, Long chatId, TelegramLongPollingBot bot) {
+        try {
+            logger.info("Mostrando tareas del usuario ID: " + userId);
+
+            // Obtener datos del usuario
+            ResponseEntity<Usuario> usuarioResponse = usuarioService.getUsuarioById(userId);
+            if (usuarioResponse == null || !usuarioResponse.getStatusCode().is2xxSuccessful() ||
+                    usuarioResponse.getBody() == null) {
+                BotHelper.sendMessageToTelegram(chatId, "❌ No se pudo encontrar el usuario.", bot);
+                mostrarSeleccionUsuarios(chatId, bot);
+                return;
+            }
+
+            Usuario usuario = usuarioResponse.getBody();
+            List<Tarea> tareas = tareaService.getTareasByUsuario(userId);
+
+            if (tareas == null || tareas.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        "📋 *" + usuario.getNombre() + "* no tiene tareas asignadas.", bot);
+                mostrarSeleccionUsuarios(chatId, bot);
+                return;
+            }
+
+            StringBuilder messageBuilder = formatearListaTareas(tareas, usuario.getNombre());
+
+            // Verificar si el mensaje es demasiado largo para Telegram (límite 4096
+            // caracteres)
+            if (messageBuilder.length() > 4000) {
+                enviarMensajePorPartes(messageBuilder.toString(), usuario.getNombre(), chatId, bot);
+                return;
+            }
+
+            // Botones para opciones adicionales
+            InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+            List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+
+            // Botón para volver a la selección de usuarios
+            List<InlineKeyboardButton> row1 = new ArrayList<>();
+            InlineKeyboardButton backButton = new InlineKeyboardButton();
+            backButton.setText("👥 Volver a Usuarios");
+            backButton.setCallbackData("VER_TAREAS");
+            row1.add(backButton);
+            rowsInline.add(row1);
+
+            // Botón para el menú principal
+            List<InlineKeyboardButton> row2 = new ArrayList<>();
+            InlineKeyboardButton menuButton = new InlineKeyboardButton();
+            menuButton.setText("🔙 Menú Principal");
+            menuButton.setCallbackData("MENU_PRINCIPAL");
+            row2.add(menuButton);
+            rowsInline.add(row2);
+
+            markupInline.setKeyboard(rowsInline);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText(messageBuilder.toString());
+            message.setParseMode("Markdown");
+            message.setReplyMarkup(markupInline);
+
+            bot.execute(message);
+
+        } catch (Exception e) {
+            logger.error("Error al mostrar tareas del usuario", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al obtener las tareas del usuario.", bot);
+            mostrarSeleccionUsuarios(chatId, bot);
+        }
+    }
+
+    /**
+     * Formatea una lista de tareas para mostrar en Telegram
+     * 
+     * @param tareas        Lista de tareas
+     * @param nombreUsuario Nombre del usuario para el título
+     * @return StringBuilder con el mensaje formateado
+     */
+    private StringBuilder formatearListaTareas(List<Tarea> tareas, String nombreUsuario) {
+        StringBuilder messageBuilder = new StringBuilder();
+        messageBuilder.append("📋 *Tareas de ").append(nombreUsuario).append(":*\n\n");
+
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+        for (Tarea tarea : tareas) {
+            try {
+                // Icono según estado
+                String estadoIcono;
+                if (tarea.getCompletado() == 1) {
+                    estadoIcono = "✅";
+                } else if (tarea.getEstadoID() == 2L) {
+                    estadoIcono = "🔄";
+                } else {
+                    estadoIcono = "⏳";
+                }
+
+                // Formatear fecha
+                String fechaStr = "Sin fecha";
+                if (tarea.getFechaEntrega() != null) {
+                    fechaStr = tarea.getFechaEntrega().toLocalDate().format(dateFormatter);
+                }
+
+                // Información de la tarea
+                messageBuilder.append(estadoIcono).append(" *").append(tarea.getTareaNombre()).append("*\n")
+                        .append("📝 ").append(tarea.getDescripcion()).append("\n")
+                        .append("📅 Entrega: ").append(fechaStr).append("\n")
+                        .append("⏱️ Horas est.: ").append(tarea.getHorasEstimadas()).append("\n");
+
+                // Incluir horas reales si está completada
+                if (tarea.getCompletado() == 1 && tarea.getHorasReales() != null) {
+                    messageBuilder.append("⏱️ Horas reales: ").append(tarea.getHorasReales()).append("\n");
+                }
+
+                // Información del sprint si existe
+                if (tarea.getSprintID() != null) {
+                    try {
+                        Optional<Sprint> sprintOpt = sprintService.getSprintById(tarea.getSprintID());
+                        if (sprintOpt.isPresent()) {
+                            messageBuilder.append("🏃 Sprint: ").append(sprintOpt.get().getNombreSprint()).append("\n");
+                        }
+                    } catch (Exception e) {
+                        logger.warn("No se pudo obtener información del sprint para la tarea: " + tarea.getTareaID());
+                    }
+                }
+
+                messageBuilder.append("\n");
+            } catch (Exception e) {
+                logger.error("Error al formatear tarea individual", e);
+                // Continuar con la siguiente tarea
+            }
+        }
+
+        return messageBuilder;
+    }
+
+    /**
+     * Envía un mensaje largo dividiéndolo en partes
+     * 
+     * @param mensaje       Mensaje completo
+     * @param nombreUsuario Nombre del usuario para títulos
+     * @param chatId        ID del chat
+     * @param bot           Bot de Telegram
+     */
+    private void enviarMensajePorPartes(String mensaje, String nombreUsuario, Long chatId, TelegramLongPollingBot bot) {
+        try {
+            int chunkCount = 1;
+            BotHelper.sendMessageToTelegram(chatId, "📋 *Tareas de " + nombreUsuario + " (Parte 1):*", bot);
+
+            int start = 0;
+            while (start < mensaje.length()) {
+                int end = Math.min(start + 3800, mensaje.length());
+                if (end < mensaje.length()) {
+                    // Buscar un buen lugar para cortar el mensaje (en un doble salto de línea)
+                    int breakPoint = mensaje.lastIndexOf("\n\n", end);
+                    if (breakPoint > start + 100) { // Al menos enviar contenido sustancial
+                        end = breakPoint;
+                    }
+                }
+
+                String chunk = mensaje.substring(start, end);
+                BotHelper.sendMessageToTelegram(chatId, chunk, bot);
+
+                start = end;
+                if (start < mensaje.length()) {
+                    chunkCount++;
+                    BotHelper.sendMessageToTelegram(chatId,
+                            "📋 *Tareas de " + nombreUsuario + " (Parte " + chunkCount + "):*", bot);
+                }
+            }
+
+            // Agregar botones después del último fragmento
+            InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+            List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+
+            List<InlineKeyboardButton> row1 = new ArrayList<>();
+            InlineKeyboardButton backButton = new InlineKeyboardButton();
+            backButton.setText("👥 Volver a Usuarios");
+            backButton.setCallbackData("VER_TAREAS");
+            row1.add(backButton);
+            rowsInline.add(row1);
+
+            List<InlineKeyboardButton> row2 = new ArrayList<>();
+            InlineKeyboardButton menuButton = new InlineKeyboardButton();
+            menuButton.setText("🔙 Menú Principal");
+            menuButton.setCallbackData("MENU_PRINCIPAL");
+            row2.add(menuButton);
+            rowsInline.add(row2);
+
+            markupInline.setKeyboard(rowsInline);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText("Selecciona una opción:");
+            message.setReplyMarkup(markupInline);
+
+            bot.execute(message);
+        } catch (Exception e) {
+            logger.error("Error al enviar mensaje por partes", e);
+            BotHelper.sendMessageToTelegram(chatId,
+                    "❌ Error al mostrar todas las tareas. Volviendo al menú principal.", bot);
+            mostrarSeleccionUsuarios(chatId, bot);
         }
     }
 }

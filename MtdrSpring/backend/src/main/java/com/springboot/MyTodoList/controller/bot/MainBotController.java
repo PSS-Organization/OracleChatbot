@@ -138,6 +138,20 @@ public class MainBotController extends TelegramLongPollingBot {
             return;
         }
 
+        // Process callbacks for viewing tasks by user
+        if (callbackData.startsWith("VER_TAREAS_USER_")) {
+            try {
+                Long userId = Long.parseLong(callbackData.substring("VER_TAREAS_USER_".length()));
+                tareaBotController.mostrarTareasUsuario(userId, chatId, this);
+                return;
+            } catch (NumberFormatException e) {
+                logger.error("Error al procesar ID de usuario: " + e.getMessage());
+                BotHelper.sendMessageToTelegram(chatId, "❌ Error al mostrar tareas del usuario.", this);
+                MenuBotHelper.showMainMenu(chatId, this);
+                return;
+            }
+        }
+
         // Process the callback data for task completion
         if (callbackData.startsWith("COMPLETAR_TAREA_")) {
             // Extract task ID from callback data
@@ -152,19 +166,10 @@ public class MainBotController extends TelegramLongPollingBot {
         }
 
         switch (callbackData) {
-            case "VER_TODAS_TAREAS":
-                // Direct call to display all tasks to avoid routing issues
-                logger.info(
-                        "Callback recibido para VER_TODAS_TAREAS. Llamando directamente a mostrarTodasLasTareas...");
-                try {
-                    tareaBotController.mostrarTodasLasTareas(chatId, this);
-                    logger.info("mostrarTodasLasTareas ejecutado correctamente");
-                } catch (Exception e) {
-                    logger.error("Error al ejecutar mostrarTodasLasTareas: " + e.getMessage(), e);
-                    BotHelper.sendMessageToTelegram(chatId,
-                            "❌ Error al mostrar las tareas. Volviendo al menú principal.", this);
-                    MenuBotHelper.showMainMenu(chatId, this);
-                }
+
+            // --------------------------------------------------------------------------------------------------------------------------------
+            case "VER_TAREAS":
+                tareaBotController.handleMessage("👥 Ver Tareas", chatId, telegramId, this);
                 break;
             case "NUEVA_TAREA":
                 tareaBotController.handleMessage("➕ Nueva Tarea", chatId, telegramId, this);

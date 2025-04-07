@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.time.format.DateTimeFormatter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +69,9 @@ public class UsuarioBotController {
             for (Tarea tarea : tareas) {
                 messageBuilder.append("🔸 *").append(tarea.getTareaNombre()).append("*\n")
                         .append("📝 ").append(tarea.getDescripcion()).append("\n")
-                        .append("📅 Entrega: ").append(tarea.getFechaEntrega()).append("\n\n");
+                        .append("📅 Entrega: ").append(tarea.getFechaEntrega() != null ? tarea.getFechaEntrega()
+                                .toLocalDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "Sin fecha")
+                        .append("\n\n");
             }
 
             SendMessage message = new SendMessage();
@@ -180,7 +183,8 @@ public class UsuarioBotController {
 
             BotHelper.sendMessageToTelegram(chatId,
                     "✅ ¡Tarea completada exitosamente!\n"
-                    + "🔸 " + tarea.getTareaNombre(), bot);
+                            + "🔸 " + tarea.getTareaNombre(),
+                    bot);
 
             // Volver al menú principal
             MenuBotHelper.showMainMenu(chatId, bot);

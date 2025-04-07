@@ -51,7 +51,7 @@ public class MenuBotHelper {
 
             // Fila 1
             KeyboardRow row1 = new KeyboardRow();
-            row1.add(BotLabels.LIST_ALL_ITEMS.getLabel()); // 📋 Ver Todas las Tareas
+            row1.add("👥 Ver Tareas");
             row1.add(BotLabels.ADD_NEW_ITEM.getLabel()); // ➕ Nueva Tarea
             keyboard.add(row1);
 
@@ -85,15 +85,15 @@ public class MenuBotHelper {
 
         // Fila 1
         List<InlineKeyboardButton> row1 = new ArrayList<>();
-        InlineKeyboardButton button1 = new InlineKeyboardButton();
-        button1.setText("📋 Ver Todas las Tareas");
-        button1.setCallbackData("VER_TODAS_TAREAS");
-
         InlineKeyboardButton button2 = new InlineKeyboardButton();
         button2.setText("➕ Nueva Tarea");
         button2.setCallbackData("NUEVA_TAREA");
 
-        row1.add(button1);
+        InlineKeyboardButton button6 = new InlineKeyboardButton();
+        button6.setText("👥 Ver Tareas");
+        button6.setCallbackData("VER_TAREAS");
+
+        row1.add(button6);
         row1.add(button2);
         rowsInline.add(row1);
 

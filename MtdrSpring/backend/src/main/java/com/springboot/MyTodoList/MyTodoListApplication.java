@@ -49,7 +49,7 @@ public class MyTodoListApplication implements CommandLineRunner {
             // Crear instancias de los subcontroladores
             TareaBotController tareaBot = new TareaBotController(tareaService, usuarioService, sprintService);
             UsuarioBotController usuarioBot = new UsuarioBotController(tareaService, usuarioService);
-            SprintBotController sprintBot = new SprintBotController(sprintService,tareaService);
+            SprintBotController sprintBot = new SprintBotController(sprintService, tareaService, usuarioService);
 
             // Registrar el controlador principal con todos los sub-controladores
             TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
@@ -59,8 +59,7 @@ public class MyTodoListApplication implements CommandLineRunner {
                     tareaBot,
                     usuarioBot,
                     sprintBot,
-                    usuarioService
-            ));
+                    usuarioService));
 
             logger.info("✅ Bot registrado correctamente en Telegram.");
         } catch (TelegramApiException e) {

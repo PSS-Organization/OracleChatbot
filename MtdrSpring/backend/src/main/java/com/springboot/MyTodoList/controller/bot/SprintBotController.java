@@ -3,6 +3,7 @@ package com.springboot.MyTodoList.controller.bot;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.time.format.DateTimeFormatter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,8 +14,10 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 
 import com.springboot.MyTodoList.model.Sprint;
 import com.springboot.MyTodoList.model.Tarea;
+import com.springboot.MyTodoList.model.Usuario;
 import com.springboot.MyTodoList.service.SprintService;
 import com.springboot.MyTodoList.service.TareaService;
+import com.springboot.MyTodoList.service.UsuarioService;
 import com.springboot.MyTodoList.util.BotHelper;
 import com.springboot.MyTodoList.util.BotLabels;
 import com.springboot.MyTodoList.util.TareaCreationManager;
@@ -25,10 +28,12 @@ public class SprintBotController {
 
     private final SprintService sprintService;
     private final TareaService tareaService;
+    private final UsuarioService usuarioService;
 
-    public SprintBotController(SprintService sprintService, TareaService tareaService) {
+    public SprintBotController(SprintService sprintService, TareaService tareaService, UsuarioService usuarioService) {
         this.sprintService = sprintService;
         this.tareaService = tareaService;
+        this.usuarioService = usuarioService;
     }
 
     public boolean canHandle(String messageText) {
@@ -180,11 +185,57 @@ public class SprintBotController {
                 messageText.append("🔸 *").append(tarea.getTareaNombre()).append("*\n")
                         .append("📝 ").append(tarea.getDescripcion()).append("\n");
 
+                // Añadir información del usuario asignado
+                if (tarea.getUsuarioID() != null) {
+                    try {
+                        var usuarioResponse = usuarioService.getUsuarioById(tarea.getUsuarioID());
+                        if (usuarioResponse != null && usuarioResponse.getStatusCode().is2xxSuccessful()
+                                && usuarioResponse.getBody() != null) {
+                            Usuario usuario = usuarioResponse.getBody();
+                            messageText.append("👤 Asignada a: ").append(usuario.getNombre()).append("\n");
+                        } else {
+                            messageText.append("👤 Asignada a: Usuario desconocido\n");
+                        }
+                    } catch (Exception e) {
+                        logger.warn(
+                                "No se pudo obtener la información del usuario para la tarea: " + tarea.getTareaID(),
+                                e);
+                        messageText.append("👤 Asignada a: No disponible\n");
+                    }
+                } else {
+                    messageText.append("👤 Asignada a: Sin asignar\n");
+                }
+
                 if (tarea.getFechaEntrega() != null) {
-                    messageText.append("📅 Fecha entrega: ").append(tarea.getFechaEntrega()).append("\n");
+                    messageText.append("📅 Fecha entrega: ").append(
+                            tarea.getFechaEntrega().toLocalDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
+                            .append("\n");
                 }
 
                 messageText.append("⏱️ Horas estimadas: ").append(tarea.getHorasEstimadas()).append("\n");
+
+                // Mostrar horas reales si están disponibles
+                if (tarea.getHorasReales() != null && tarea.getHorasReales() > 0) {
+                    messageText.append("⏱️ Horas reales: ").append(tarea.getHorasReales()).append("\n");
+                }
+
+                // Mostrar prioridad si está disponible
+                if (tarea.getPrioridad() != null && !tarea.getPrioridad().isEmpty()) {
+                    String prioridadIcon = "📌 ";
+                    switch (tarea.getPrioridad()) {
+                        case "ALTA":
+                            prioridadIcon = "⬆️ ";
+                            break;
+                        case "MEDIA":
+                            prioridadIcon = "↔️ ";
+                            break;
+                        case "BAJA":
+                            prioridadIcon = "⬇️ ";
+                            break;
+                    }
+                    messageText.append(prioridadIcon).append("Prioridad: ").append(tarea.getPrioridad()).append("\n");
+                }
+
                 messageText.append("Estado: ").append(estado).append("\n\n");
             }
 

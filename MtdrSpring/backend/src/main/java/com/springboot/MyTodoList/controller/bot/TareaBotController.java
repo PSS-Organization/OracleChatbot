@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,8 +41,8 @@ public class TareaBotController {
     private final UsuarioService usuarioService;
     private final SprintService sprintService;
 
-    private static Map<Long, Tarea> completionTasks = new HashMap<>();
-    private static Map<Long, Boolean> awaitingHoursReal = new HashMap<>();
+    private static final Map<Long, Tarea> completionTasks = new ConcurrentHashMap<>();
+    private static final Map<Long, Boolean> awaitingHoursReal = new ConcurrentHashMap<>();
 
     public TareaBotController(TareaService tareaService, UsuarioService usuarioService, SprintService sprintService) {
         this.tareaService = tareaService;
@@ -1627,30 +1628,23 @@ public class TareaBotController {
      * @return StringBuilder con el mensaje formateado
      */
     private StringBuilder formatearListaTareas(List<Tarea> tareas, String nombreUsuario) {
-        StringBuilder messageBuilder = new StringBuilder();
+        // Pre-allocate a StringBuilder with larger capacity to avoid reallocations
+        StringBuilder messageBuilder = new StringBuilder(1024);
         messageBuilder.append("📋 *Tareas de ").append(nombreUsuario).append(":*\n\n");
 
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
         for (Tarea tarea : tareas) {
             try {
-                // Icono según estado
-                String estadoIcono;
-                if (tarea.getCompletado() == 1) {
-                    estadoIcono = "✅";
-                } else if (tarea.getEstadoID() == 2L) {
-                    estadoIcono = "🔄";
-                } else {
-                    estadoIcono = "⏳";
-                }
+                // Optimize icon selection with a ternary operator
+                String estadoIcono = tarea.getCompletado() == 1 ? "✅" : (tarea.getEstadoID() == 2L ? "🔄" : "⏳");
 
-                // Formatear fecha
-                String fechaStr = "Sin fecha";
-                if (tarea.getFechaEntrega() != null) {
-                    fechaStr = tarea.getFechaEntrega().toLocalDate().format(dateFormatter);
-                }
+                // Format date more efficiently
+                String fechaStr = tarea.getFechaEntrega() != null
+                        ? tarea.getFechaEntrega().toLocalDate().format(dateFormatter)
+                        : "Sin fecha";
 
-                // Información de la tarea
+                // Use StringBuilder's append method chain for better performance
                 messageBuilder.append(estadoIcono).append(" *").append(tarea.getTareaNombre()).append("*\n")
                         .append("📝 ").append(tarea.getDescripcion()).append("\n")
                         .append("📅 Entrega: ").append(fechaStr).append("\n")
@@ -1661,7 +1655,7 @@ public class TareaBotController {
                     messageBuilder.append("⏱️ Horas reales: ").append(tarea.getHorasReales()).append("\n");
                 }
 
-                // Información del sprint si existe
+                // Include sprint info conditionally without extra queries when possible
                 if (tarea.getSprintID() != null) {
                     try {
                         Optional<Sprint> sprintOpt = sprintService.getSprintById(tarea.getSprintID());
@@ -1669,14 +1663,15 @@ public class TareaBotController {
                             messageBuilder.append("🏃 Sprint: ").append(sprintOpt.get().getNombreSprint()).append("\n");
                         }
                     } catch (Exception e) {
-                        logger.warn("No se pudo obtener información del sprint para la tarea: " + tarea.getTareaID());
+                        // Just log and continue, don't break the flow for a single sprint
+                        logger.warn("No se pudo obtener sprint para tarea: {}", tarea.getTareaID());
                     }
                 }
 
                 messageBuilder.append("\n");
             } catch (Exception e) {
-                logger.error("Error al formatear tarea individual", e);
-                // Continuar con la siguiente tarea
+                logger.error("Error al formatear tarea: {}", tarea.getTareaID(), e);
+                // Continue with the next task rather than failing completely
             }
         }
 

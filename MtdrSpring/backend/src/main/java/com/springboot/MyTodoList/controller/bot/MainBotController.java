@@ -25,10 +25,15 @@ import com.springboot.MyTodoList.util.TareaCreationManager;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 public class MainBotController extends TelegramLongPollingBot {
 
     private static final Logger logger = LoggerFactory.getLogger(MainBotController.class);
+    private final Executor messageExecutor = Executors.newFixedThreadPool(10); // Thread pool for message processing
 
     private final String botName;
     private final TareaBotController tareaBotController;
@@ -57,28 +62,35 @@ public class MainBotController extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
-        // Handle callback queries (from inline buttons)
-        if (update.hasCallbackQuery()) {
-            handleCallbackQuery(update.getCallbackQuery());
-            return;
-        }
+        // Process update asynchronously to handle multiple messages concurrently
+        CompletableFuture.runAsync(() -> {
+            try {
+                // Handle callback queries (from inline buttons)
+                if (update.hasCallbackQuery()) {
+                    handleCallbackQuery(update.getCallbackQuery());
+                    return;
+                }
 
-        if (update.hasMessage()) {
-            Long chatId = update.getMessage().getChatId();
-            Long telegramId = update.getMessage().getFrom().getId();
+                if (update.hasMessage()) {
+                    Long chatId = update.getMessage().getChatId();
+                    Long telegramId = update.getMessage().getFrom().getId();
 
-            // Handle contact sharing
-            if (update.getMessage().hasContact()) {
-                handleContactShared(update.getMessage().getContact(), chatId, telegramId);
-                return;
+                    // Handle contact sharing
+                    if (update.getMessage().hasContact()) {
+                        handleContactShared(update.getMessage().getContact(), chatId, telegramId);
+                        return;
+                    }
+
+                    // Handle text messages
+                    if (update.getMessage().hasText()) {
+                        String messageText = update.getMessage().getText();
+                        handleTextMessage(messageText, chatId, telegramId);
+                    }
+                }
+            } catch (Exception e) {
+                logger.error("Error processing update: {}", e.getMessage(), e);
             }
-
-            // Handle text messages
-            if (update.getMessage().hasText()) {
-                String messageText = update.getMessage().getText();
-                handleTextMessage(messageText, chatId, telegramId);
-            }
-        }
+        }, messageExecutor);
     }
 
     private void handleCallbackQuery(CallbackQuery callbackQuery) {

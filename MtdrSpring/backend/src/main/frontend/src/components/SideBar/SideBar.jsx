@@ -13,22 +13,9 @@ const Sidebar = () => {
     useEffect(() => {
         const checkAdminStatus = async () => {
             try {
-                // Try different possible localStorage keys for userId
-                const userId = localStorage.getItem("userId") ||
-                    localStorage.getItem("user_id") ||
-                    localStorage.getItem("usuarioID") ||
-                    localStorage.getItem("usuario_id");
-
-                console.log("Local Storage Keys:", Object.keys(localStorage));
-                console.log("Retrieved userId:", userId);
-
-                // For testing purposes, if userId is null, use a default value (remove in production)
-                const idToUse = userId || "1"; // Fallback to user ID 1 for testing
-
-                if (idToUse) {
-                    console.log("Fetching admin status for user ID:", idToUse);
-                    const response = await axios.get(`/usuarios/is-admin/${idToUse}`);
-                    console.log("Admin status response:", response.data);
+                const userId = localStorage.getItem("userId") || "1"; // Fallback to user ID 1 for testing
+                if (userId) {
+                    const response = await axios.get(`/usuarios/is-admin/${userId}`);
                     setIsAdmin(response.data.isAdmin);
                 }
             } catch (error) {
@@ -38,14 +25,21 @@ const Sidebar = () => {
             }
         };
 
-        checkAdminStatus();
+        // Check if admin status is already cached
+        const cachedAdminStatus = localStorage.getItem("isAdmin");
+        if (cachedAdminStatus !== null) {
+            setIsAdmin(cachedAdminStatus === "true");
+            setLoading(false);
+        } else {
+            checkAdminStatus();
+        }
     }, []);
 
     // Define menu items based on admin status
     const menuItems = [
         { name: "Home", icon: <Home />, path: "/home" },
         { name: "Board", icon: <Dashboard />, path: "/board" },
-        { name: "Chatbot", icon: <Chat />, path: "/chatbot" },
+        { name: "Chatbot", icon: <Chat />, external: true, path: "https://web.telegram.org/k/#@pss_oracle_bot" },
         { name: "Team", icon: <Group />, path: "/team" },
         { name: "Sprint", icon: <Task />, path: "/sprint" },
     ];
@@ -57,7 +51,7 @@ const Sidebar = () => {
 
     return (
         <>
-            {/* Botón móvil para mostrar/ocultar sidebar */}
+            {/* Mobile button to toggle sidebar */}
             <button
                 className="lg:hidden fixed top-4 left-4 z-20 p-2 rounded-md bg-gray-800 text-white"
                 onClick={toggleSidebar}
@@ -77,17 +71,35 @@ const Sidebar = () => {
             `}>
                 <h1 className="text-xl font-bold mb-5">ProjectFlow</h1>
                 <nav>
-                    {!loading && menuItems.map((item, index) => (
-                        <Link
-                            key={index}
-                            to={item.path}
-                            className="flex items-center space-x-2 p-2 rounded hover:bg-gray-700 transition duration-300"
-                            onClick={() => setIsOpen(false)}
-                        >
-                            {item.icon}
-                            <span>{item.name}</span>
-                        </Link>
-                    ))}
+                    {loading ? (
+                        <p>Loading...</p> // Show a loading indicator while fetching admin status
+                    ) : (
+                        menuItems.map((item, index) => (
+                            item.external ? (
+                                <a
+                                    key={index}
+                                    href={item.path}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center space-x-2 p-2 rounded hover:bg-gray-700 transition duration-300"
+                                    onClick={() => setIsOpen(false)}
+                                >
+                                    {item.icon}
+                                    <span>{item.name}</span>
+                                </a>
+                            ) : (
+                                <Link
+                                    key={index}
+                                    to={item.path}
+                                    className="flex items-center space-x-2 p-2 rounded hover:bg-gray-700 transition duration-300"
+                                    onClick={() => setIsOpen(false)}
+                                >
+                                    {item.icon}
+                                    <span>{item.name}</span>
+                                </Link>
+                            )
+                        ))
+                    )}
                 </nav>
             </div>
         </>

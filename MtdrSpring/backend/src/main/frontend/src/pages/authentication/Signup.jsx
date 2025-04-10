@@ -14,16 +14,15 @@ const SignupScreen = () => {
     const navigate = useNavigate();
 
     const handlePhoneChange = (event) => {
-        let input = event.target.value.replace(/\D/g, '');
-        if (input.startsWith('52')) input = input.substring(2);
-        if (input.length > 10) input = input.substring(0, 10);
+        let input = event.target.value.replace(/\D/g, ''); 
+        if (input.length > 10) input = input.substring(0, 10); 
         setPhone(input);
     };
 
     const formatPhoneDisplay = (input) => {
-        if (input.length <= 3) return `+52-${input}`;
-        if (input.length <= 6) return `+52-${input.substring(0, 3)}-${input.substring(3)}`;
-        return `+52-${input.substring(0, 3)}-${input.substring(3, 6)}-${input.substring(6, 10)}`;
+        if (input.length <= 3) return input;
+        if (input.length <= 6) return `${input.substring(0, 3)}-${input.substring(3)}`;
+        return `${input.substring(0, 3)}-${input.substring(3, 6)}-${input.substring(6, 10)}`;
     };
 
     const handleSubmit = async (e) => {
@@ -46,7 +45,7 @@ const SignupScreen = () => {
         const userData = {
             nombre: fullname,
             correo: email,
-            telefono: `+52${phone}`,
+            telefono: phone,
             contrasena: password,
             rolUsuario: 'USER',
             esAdmin: 0,

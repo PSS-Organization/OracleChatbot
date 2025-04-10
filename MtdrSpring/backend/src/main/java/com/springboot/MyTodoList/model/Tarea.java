@@ -7,11 +7,18 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.Index;
 import javax.persistence.Lob;
 import javax.persistence.Table;
 
 @Entity
-@Table(name = "TAREAS")
+@Table(name = "TAREAS", indexes = {
+        @Index(name = "idx_tarea_usuario", columnList = "USUARIOID"),
+        @Index(name = "idx_tarea_sprint", columnList = "SPRINTID"),
+        @Index(name = "idx_tarea_estado", columnList = "ESTADOID"),
+        @Index(name = "idx_tarea_completado", columnList = "COMPLETADO"),
+        @Index(name = "idx_tarea_prioridad", columnList = "PRIORIDAD")
+})
 public class Tarea {
 
     @Id
@@ -33,7 +40,7 @@ public class Tarea {
     private OffsetDateTime fechaCreacion;
 
     @Column(name = "COMPLETADO", nullable = false)
-    private Integer completado = 0;  // ✅ Usa 0 o 1 en lugar de true/false
+    private Integer completado = 0; // ✅ Usa 0 o 1 en lugar de true/false
 
     @Column(name = "PRIORIDAD", nullable = false)
     private String prioridad = "BAJA";
@@ -54,10 +61,13 @@ public class Tarea {
     private Long estadoID;
 
     // 🔽 Constructor vacío
-    public Tarea() {}
+    public Tarea() {
+    }
 
     // 🔽 Constructor con parámetros
-    public Tarea(String tareaNombre, String descripcion, OffsetDateTime fechaEntrega, Integer completado, String prioridad, Integer horasEstimadas, Integer horasReales, Long usuarioID, Long sprintID, Long estadoID) {
+    public Tarea(String tareaNombre, String descripcion, OffsetDateTime fechaEntrega, Integer completado,
+            String prioridad, Integer horasEstimadas, Integer horasReales, Long usuarioID, Long sprintID,
+            Long estadoID) {
         this.tareaNombre = tareaNombre;
         this.descripcion = descripcion;
         this.fechaEntrega = fechaEntrega;
@@ -72,41 +82,101 @@ public class Tarea {
     }
 
     // 🔽 Getters y Setters
-    public Long getTareaID() { return tareaID; }
-    public void setTareaID(Long tareaID) { this.tareaID = tareaID; }
+    public Long getTareaID() {
+        return tareaID;
+    }
 
-    public String getTareaNombre() { return tareaNombre; }
-    public void setTareaNombre(String tareaNombre) { this.tareaNombre = tareaNombre; }
+    public void setTareaID(Long tareaID) {
+        this.tareaID = tareaID;
+    }
 
-    public String getDescripcion() { return descripcion; }
-    public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
+    public String getTareaNombre() {
+        return tareaNombre;
+    }
 
-    public OffsetDateTime getFechaEntrega() { return fechaEntrega; }
-    public void setFechaEntrega(OffsetDateTime fechaEntrega) { this.fechaEntrega = fechaEntrega; }
+    public void setTareaNombre(String tareaNombre) {
+        this.tareaNombre = tareaNombre;
+    }
 
-    public OffsetDateTime getFechaCreacion() { return fechaCreacion; }
-    public void setFechaCreacion(OffsetDateTime fechaCreacion) { this.fechaCreacion = fechaCreacion; }
+    public String getDescripcion() {
+        return descripcion;
+    }
 
-    public Integer getCompletado() { return completado; }
-    public void setCompletado(Integer completado) { this.completado = completado; }
+    public void setDescripcion(String descripcion) {
+        this.descripcion = descripcion;
+    }
 
-    public String getPrioridad() { return prioridad; }
-    public void setPrioridad(String prioridad) { this.prioridad = prioridad; }
+    public OffsetDateTime getFechaEntrega() {
+        return fechaEntrega;
+    }
 
-    public Integer getHorasEstimadas() { return horasEstimadas; }
-    public void setHorasEstimadas(Integer horasEstimadas) { this.horasEstimadas = horasEstimadas; }
+    public void setFechaEntrega(OffsetDateTime fechaEntrega) {
+        this.fechaEntrega = fechaEntrega;
+    }
 
-    public Integer getHorasReales() { return horasReales; }
-    public void setHorasReales(Integer horasReales) { this.horasReales = horasReales; }
+    public OffsetDateTime getFechaCreacion() {
+        return fechaCreacion;
+    }
 
-    public Long getUsuarioID() { return usuarioID; }
-    public void setUsuarioID(Long usuarioID) { this.usuarioID = usuarioID; }
+    public void setFechaCreacion(OffsetDateTime fechaCreacion) {
+        this.fechaCreacion = fechaCreacion;
+    }
 
-    public Long getSprintID() { return sprintID; }
-    public void setSprintID(Long sprintID) { this.sprintID = sprintID; }
+    public Integer getCompletado() {
+        return completado;
+    }
 
-    public Long getEstadoID() { return estadoID; }
-    public void setEstadoID(Long estadoID) { this.estadoID = estadoID; }
+    public void setCompletado(Integer completado) {
+        this.completado = completado;
+    }
+
+    public String getPrioridad() {
+        return prioridad;
+    }
+
+    public void setPrioridad(String prioridad) {
+        this.prioridad = prioridad;
+    }
+
+    public Integer getHorasEstimadas() {
+        return horasEstimadas;
+    }
+
+    public void setHorasEstimadas(Integer horasEstimadas) {
+        this.horasEstimadas = horasEstimadas;
+    }
+
+    public Integer getHorasReales() {
+        return horasReales;
+    }
+
+    public void setHorasReales(Integer horasReales) {
+        this.horasReales = horasReales;
+    }
+
+    public Long getUsuarioID() {
+        return usuarioID;
+    }
+
+    public void setUsuarioID(Long usuarioID) {
+        this.usuarioID = usuarioID;
+    }
+
+    public Long getSprintID() {
+        return sprintID;
+    }
+
+    public void setSprintID(Long sprintID) {
+        this.sprintID = sprintID;
+    }
+
+    public Long getEstadoID() {
+        return estadoID;
+    }
+
+    public void setEstadoID(Long estadoID) {
+        this.estadoID = estadoID;
+    }
 
     @Override
     public String toString() {
@@ -137,5 +207,5 @@ public class Tarea {
         this.estadoID = original.getEstadoID();
         this.completado = original.getCompletado();
     }
-    
+
 }

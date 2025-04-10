@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
@@ -19,6 +21,8 @@ import com.springboot.MyTodoList.service.SprintService;
 import com.springboot.MyTodoList.service.TareaService;
 import com.springboot.MyTodoList.service.UsuarioService;
 
+@EnableCaching
+@EnableAsync
 @SpringBootApplication
 public class MyTodoListApplication implements CommandLineRunner {
 
@@ -49,7 +53,7 @@ public class MyTodoListApplication implements CommandLineRunner {
             // Crear instancias de los subcontroladores
             TareaBotController tareaBot = new TareaBotController(tareaService, usuarioService, sprintService);
             UsuarioBotController usuarioBot = new UsuarioBotController(tareaService, usuarioService);
-            SprintBotController sprintBot = new SprintBotController(sprintService,tareaService);
+            SprintBotController sprintBot = new SprintBotController(sprintService, tareaService, usuarioService);
 
             // Registrar el controlador principal con todos los sub-controladores
             TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
@@ -59,8 +63,7 @@ public class MyTodoListApplication implements CommandLineRunner {
                     tareaBot,
                     usuarioBot,
                     sprintBot,
-                    usuarioService
-            ));
+                    usuarioService));
 
             logger.info("✅ Bot registrado correctamente en Telegram.");
         } catch (TelegramApiException e) {

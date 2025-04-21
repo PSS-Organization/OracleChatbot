@@ -116,11 +116,6 @@ public class MainBotController extends TelegramLongPollingBot {
                 logger.error("Error al parsear ID de sprint: " + e.getMessage());
                 BotHelper.sendMessageToTelegram(chatId, "❌ Error al obtener tareas del sprint.", this);
                 MenuBotHelper.showMainMenu(chatId, this);
-            } catch (Exception e) {
-                logger.error("Error inesperado al mostrar tareas de sprint: " + e.getMessage(), e);
-                BotHelper.sendMessageToTelegram(chatId, "❌ Error al procesar el sprint. Volviendo al menú principal.",
-                        this);
-                MenuBotHelper.showMainMenu(chatId, this);
             }
             return;
         }
@@ -152,6 +147,20 @@ public class MainBotController extends TelegramLongPollingBot {
             }
         }
 
+        // Process callbacks for viewing KPIs by user
+        if (callbackData.startsWith("VER_KPIS_USER_")) {
+            try {
+                Long userId = Long.parseLong(callbackData.substring("VER_KPIS_USER_".length()));
+                tareaBotController.mostrarKPIsUsuario(userId, chatId, this);
+                return;
+            } catch (NumberFormatException e) {
+                logger.error("Error al procesar ID de usuario para KPIs: " + e.getMessage());
+                BotHelper.sendMessageToTelegram(chatId, "❌ Error al mostrar KPIs del usuario.", this);
+                MenuBotHelper.showMainMenu(chatId, this);
+                return;
+            }
+        }
+
         // Process the callback data for task completion
         if (callbackData.startsWith("COMPLETAR_TAREA_")) {
             // Extract task ID from callback data
@@ -166,6 +175,9 @@ public class MainBotController extends TelegramLongPollingBot {
         }
 
         switch (callbackData) {
+            case "MENU_PRINCIPAL":
+                MenuBotHelper.showMainMenu(chatId, this);
+                break;
 
             // --------------------------------------------------------------------------------------------------------------------------------
             case "VER_TAREAS":
@@ -177,42 +189,14 @@ public class MainBotController extends TelegramLongPollingBot {
             case "MIS_TAREAS":
                 tareaBotController.handleMessage("👤 Mis Tareas", chatId, telegramId, this);
                 break;
-            case "VER_POR_SPRINT":
-                try {
-                    logger.info("Callback recibido para VER_POR_SPRINT");
-
-                    // Limpiar cualquier estado de creación de tarea activo
-                    if (TareaCreationManager.isInCreationProcess(chatId)) {
-                        logger.warn("Había una tarea en creación activa, limpiando estado antes de mostrar sprints");
-                        TareaCreationManager.clearState(chatId);
-                    }
-
-                    sprintBotController.handleMessage("🏃 Ver por Sprint", chatId, this);
-                } catch (Exception e) {
-                    logger.error("Error al mostrar sprints: " + e.getMessage(), e);
-                    BotHelper.sendMessageToTelegram(chatId,
-                            "❌ Error al obtener los sprints. Volviendo al menú principal.", this);
-                    MenuBotHelper.showMainMenu(chatId, this);
-                }
-                break;
             case "VER_POR_ESTADO":
                 tareaBotController.handleMessage("📊 Ver por Estado", chatId, telegramId, this);
                 break;
-            case "MENU_PRINCIPAL":
-                try {
-                    logger.info("Mostrando menú principal para chatId: " + chatId);
-                    MenuBotHelper.showMainMenu(chatId, this);
-                } catch (Exception e) {
-                    logger.error("Error al mostrar menú principal", e);
-                    // Intento de recuperación con un mensaje más simple
-                    try {
-                        BotHelper.sendMessageToTelegram(chatId,
-                                "❌ Error al mostrar el menú principal.\nPor favor, escribe /start para reiniciar.",
-                                this);
-                    } catch (Exception ex) {
-                        logger.error("Error fatal al comunicarse con el usuario", ex);
-                    }
-                }
+            case "VER_POR_SPRINT":
+                sprintBotController.handleMessage("🏃 Ver por Sprint", chatId, this);
+                break;
+            case "VER_KPIS":
+                tareaBotController.handleMessage("📊 KPIs", chatId, telegramId, this);
                 break;
             case "COMPLETAR_TAREAS":
                 tareaBotController.handleMessage("✅ Completar Tareas", chatId, telegramId, this);

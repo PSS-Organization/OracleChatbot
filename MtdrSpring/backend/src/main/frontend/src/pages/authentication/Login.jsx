@@ -18,6 +18,9 @@ const Login = () => {
       const response = await login({ email, password });
 
       if (response.success) {
+        // Debug: Mostrar el token JWT // COMENTAR EN PRODUCCIÓN
+        console.log("Token JWT generado:", response.token);
+
         // Guardar el token JWT
         setToken(response.token);
 

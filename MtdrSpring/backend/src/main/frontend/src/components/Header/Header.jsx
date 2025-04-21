@@ -1,16 +1,23 @@
 // Header.jsx
 import React, { useState, useEffect } from "react";
-import { FilterList, Add, Close, Visibility, VisibilityOff } from "@mui/icons-material";
-import { getBackendUrl } from "../../utils/getBackendUrl";
+import {
+  FilterList,
+  Add,
+  Close,
+  Visibility,
+  VisibilityOff,
+} from "@mui/icons-material";
+import axiosInstance from "../../utils/axiosConfig";
+import { API_SPRINTS } from "../../API";
 
 const Header = ({
   headerTitle = "Default Title",
   addButtonLabel = "Add Something",
   AddComponent,
-  onAddComplete, // callback al terminar el formulario
+  onAddComplete,
   showMyTasksOnly = false,
-  onToggleMyTasks = () => { }, // new callback for eye icon toggle
-  onFilterChange = () => {} // callback for filter changes
+  onToggleMyTasks = () => {},
+  onFilterChange = () => {},
 }) => {
   const [isModalOpen, setModalOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -23,25 +30,22 @@ const Header = ({
   useEffect(() => {
     const fetchFilterData = async () => {
       try {
-        const backendUrl = await getBackendUrl();
         // Fetch sprints
-        const sprintsResponse = await fetch(`${backendUrl}/sprints`);
-        if (sprintsResponse.ok) {
-          const sprintsData = await sprintsResponse.json();
-          setSprints(sprintsData);
+        const sprintsResponse = await axiosInstance.get(API_SPRINTS);
+        if (sprintsResponse.data) {
+          setSprints(sprintsResponse.data);
         }
-        
+
         // Fetch users
-        const usersResponse = await fetch(`${backendUrl}/usuarios/all`);
-        if (usersResponse.ok) {
-          const usersData = await usersResponse.json();
-          setUsuarios(usersData);
+        const usersResponse = await axiosInstance.get("/usuarios/all");
+        if (usersResponse.data) {
+          setUsuarios(usersResponse.data);
         }
       } catch (err) {
         console.error("Error fetching filter data:", err);
       }
     };
-    
+
     fetchFilterData();
   }, []);
 
@@ -66,7 +70,7 @@ const Header = ({
     if (e.target.checked) {
       setSelectedSprints([...selectedSprints, sprintId]);
     } else {
-      setSelectedSprints(selectedSprints.filter(id => id !== sprintId));
+      setSelectedSprints(selectedSprints.filter((id) => id !== sprintId));
     }
   };
 
@@ -74,14 +78,14 @@ const Header = ({
     if (e.target.checked) {
       setSelectedUsers([...selectedUsers, userId]);
     } else {
-      setSelectedUsers(selectedUsers.filter(id => id !== userId));
+      setSelectedUsers(selectedUsers.filter((id) => id !== userId));
     }
   };
 
   const applyFilters = () => {
     onFilterChange({
       sprints: selectedSprints,
-      users: selectedUsers
+      users: selectedUsers,
     });
     setIsFilterOpen(false);
   };
@@ -91,7 +95,7 @@ const Header = ({
     setSelectedUsers([]);
     onFilterChange({
       sprints: [],
-      users: []
+      users: [],
     });
   };
 
@@ -104,17 +108,25 @@ const Header = ({
       <div className="flex space-x-2">
         {/* Eye toggle button */}
         <button
-          className={`flex items-center space-x-1 ${showMyTasksOnly ? 'bg-blue-100 text-blue-800' : 'bg-gray-100'} px-3 py-2 rounded-md`}
+          className={`flex items-center space-x-1 ${
+            showMyTasksOnly ? "bg-blue-100 text-blue-800" : "bg-gray-100"
+          } px-3 py-2 rounded-md`}
           onClick={onToggleMyTasks}
-          title={showMyTasksOnly ? "Showing only my tasks" : "Showing all tasks"}
+          title={
+            showMyTasksOnly ? "Showing only my tasks" : "Showing all tasks"
+          }
         >
           {showMyTasksOnly ? <Visibility /> : <VisibilityOff />}
         </button>
 
         {/* Filter dropdown */}
         <div className="relative">
-          <button 
-            className={`flex items-center space-x-1 ${selectedSprints.length > 0 || selectedUsers.length > 0 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100'} px-3 py-2 rounded-md`}
+          <button
+            className={`flex items-center space-x-1 ${
+              selectedSprints.length > 0 || selectedUsers.length > 0
+                ? "bg-blue-100 text-blue-800"
+                : "bg-gray-100"
+            } px-3 py-2 rounded-md`}
             onClick={toggleFilterDropdown}
           >
             <FilterList />
@@ -125,18 +137,23 @@ const Header = ({
             <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg z-50 border border-gray-200">
               <div className="p-4">
                 <h3 className="font-bold text-lg mb-2">Filters</h3>
-                
+
                 {/* Sprints filter section */}
                 <div className="mb-4">
                   <h4 className="font-semibold mb-2">Sprints</h4>
                   <div className="max-h-40 overflow-y-auto">
-                    {sprints.map(sprint => (
-                      <div key={sprint.sprintID} className="flex items-center mb-1">
+                    {sprints.map((sprint) => (
+                      <div
+                        key={sprint.sprintID}
+                        className="flex items-center mb-1"
+                      >
                         <input
                           type="checkbox"
                           id={`sprint-${sprint.sprintID}`}
                           checked={selectedSprints.includes(sprint.sprintID)}
-                          onChange={(e) => handleSprintChange(e, sprint.sprintID)}
+                          onChange={(e) =>
+                            handleSprintChange(e, sprint.sprintID)
+                          }
                           className="mr-2"
                         />
                         <label htmlFor={`sprint-${sprint.sprintID}`}>
@@ -146,13 +163,16 @@ const Header = ({
                     ))}
                   </div>
                 </div>
-                
+
                 {/* Users filter section */}
                 <div className="mb-4">
                   <h4 className="font-semibold mb-2">Users</h4>
                   <div className="max-h-40 overflow-y-auto">
-                    {usuarios.map(user => (
-                      <div key={user.usuarioID} className="flex items-center mb-1">
+                    {usuarios.map((user) => (
+                      <div
+                        key={user.usuarioID}
+                        className="flex items-center mb-1"
+                      >
                         <input
                           type="checkbox"
                           id={`user-${user.usuarioID}`}
@@ -167,16 +187,16 @@ const Header = ({
                     ))}
                   </div>
                 </div>
-                
+
                 {/* Filter actions */}
                 <div className="flex justify-between">
-                  <button 
+                  <button
                     className="bg-gray-200 text-gray-700 px-2 py-1 rounded"
                     onClick={clearFilters}
                   >
                     Clear
                   </button>
-                  <button 
+                  <button
                     className="bg-blue-500 text-white px-2 py-1 rounded"
                     onClick={applyFilters}
                   >
@@ -213,9 +233,7 @@ const Header = ({
             {/* <h2 className="text-xl font-bold mb-4">{addButtonLabel}</h2> */}
 
             {/* Renderizamos el componente dinámico */}
-            {AddComponent && (
-              <AddComponent onAddComplete={handleAddSuccess} />
-            )}
+            {AddComponent && <AddComponent onAddComplete={handleAddSuccess} />}
           </div>
         </div>
       )}

@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.springboot.MyTodoList.model.Usuario;
+import com.springboot.MyTodoList.security.JwtService;
 import com.springboot.MyTodoList.service.UsuarioService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,6 +32,9 @@ public class UsuarioController {
 
     @Autowired
     private UsuarioService usuarioService;
+
+    @Autowired
+    private JwtService jwtService;
 
     @GetMapping("/all")
     @Operation(summary = "Obtener todos los usuarios", description = "Devuelve la lista de todos los usuarios en la base de datos")
@@ -130,35 +134,47 @@ public class UsuarioController {
 
     // Login (mantener el endpoint existente)
     @PostMapping("/login")
-    @Operation(summary = "Autenticar usuario", description = "Verifica las credenciales del usuario y devuelve sus datos si son correctas.")
+    @Operation(summary = "Autenticar usuario", description = "Verifica las credenciales del usuario y devuelve sus datos y token JWT si son correctas.")
     public ResponseEntity<?> login(@RequestBody Map<String, String> credentials) {
         String correo = credentials.get("email");
         String contrasena = credentials.get("password");
-        Optional<Usuario> usuario = (Optional<Usuario>) usuarioService.authenticate(correo, contrasena);
+        Optional<Usuario> usuario = usuarioService.authenticate(correo, contrasena);
 
         if (usuario.isPresent()) {
+            Usuario user = usuario.get();
+            String token = jwtService.generateToken(user.getCorreo(), user.getUsuarioID());
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Login successful");
-            response.put("usuario", usuario.get());
+            response.put("usuario", user);
+            response.put("token", token);
 
             return ResponseEntity.ok(response);
         } else {
-            return ResponseEntity.status(401).body(Map.of("success", false, "message", "Invalid email or password"));
+            return ResponseEntity.status(401)
+                    .body(Map.of("success", false, "message", "Invalid email or password"));
         }
     }
 
     // 🔹 Nuevo endpoint para registrar usuarios
     @PostMapping("/signup")
     @Operation(summary = "Registrar un nuevo usuario", description = "Registra un usuario en la base de datos")
-
     public ResponseEntity<?> signup(@RequestBody Usuario usuario) {
         try {
             Usuario nuevoUsuario = usuarioService.createUsuario(usuario);
-            return ResponseEntity
-                    .ok(Map.of("success", true, "message", "User registered successfully", "usuario", nuevoUsuario));
+            String token = jwtService.generateToken(nuevoUsuario.getCorreo(), nuevoUsuario.getUsuarioID());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "User registered successfully");
+            response.put("usuario", nuevoUsuario);
+            response.put("token", token);
+
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 }

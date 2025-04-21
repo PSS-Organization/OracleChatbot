@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { API_SPRINTS } from "../../API";
+import { createSprint } from "../../API";
 
 const AddSprint = ({ onAddComplete }) => {
   const [nombreSprint, setNombreSprint] = useState("");
@@ -32,21 +32,8 @@ const AddSprint = ({ onAddComplete }) => {
     };
 
     try {
-      const response = await fetch(API_SPRINTS, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sprintData),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || "Failed to create sprint.");
-      }
-
-      const createdSprint = await response.json();
-      console.log("Sprint created:", createdSprint);
+      const createdSprint = await createSprint(sprintData);
       setSuccessMessage("Sprint created successfully!");
-      setLoading(false);
 
       // Clear the form fields
       setNombreSprint("");
@@ -59,6 +46,7 @@ const AddSprint = ({ onAddComplete }) => {
     } catch (err) {
       console.error("Error creating sprint:", err.message);
       setError(err.message);
+    } finally {
       setLoading(false);
     }
   };
@@ -68,7 +56,9 @@ const AddSprint = ({ onAddComplete }) => {
       <h2 className="text-xl font-bold mb-4">Add New Sprint</h2>
 
       {error && <p className="text-red-500 mb-3">{error}</p>}
-      {successMessage && <p className="text-green-500 mb-3">{successMessage}</p>}
+      {successMessage && (
+        <p className="text-green-500 mb-3">{successMessage}</p>
+      )}
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4">
         <input

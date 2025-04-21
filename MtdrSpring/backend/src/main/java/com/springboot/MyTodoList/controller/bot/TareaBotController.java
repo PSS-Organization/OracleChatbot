@@ -92,7 +92,7 @@ public class TareaBotController {
         }
 
         if (messageText.equals("📊 KPIs") || messageText.equals("VER_KPIS")) {
-            mostrarSeleccionUsuariosParaKPIs(chatId, bot);
+            mostrarOpcionesKPIs(chatId, bot);
             return;
         }
 
@@ -987,9 +987,9 @@ public class TareaBotController {
             StringBuilder messageBuilder = new StringBuilder();
             messageBuilder.append("👤 *MIS TAREAS:*\n\n");
 
-            // Use the standardized task formatter for each task
+            // Use the standardized task formatter for each task with detailed info
             for (Tarea tarea : tareas) {
-                messageBuilder.append(formatTareaStandard(tarea, false)).append("\n");
+                messageBuilder.append(formatTareaStandard(tarea, true)).append("\n");
             }
 
             SendMessage message = new SendMessage();
@@ -1793,14 +1793,14 @@ public class TareaBotController {
      * @param chatId ID del chat
      * @param bot    Bot de Telegram
      */
-    private void mostrarSeleccionUsuariosParaKPIs(Long chatId, TelegramLongPollingBot bot) {
+    public void mostrarSeleccionUsuariosParaKPIs(Long chatId, TelegramLongPollingBot bot) {
         try {
             logger.info("Mostrando selección de usuarios para ver KPIs");
             List<Usuario> usuarios = usuarioService.getAllUsuarios();
 
             if (usuarios == null || usuarios.isEmpty()) {
                 BotHelper.sendMessageToTelegram(chatId, "❌ No hay usuarios registrados en el sistema.", bot);
-                MenuBotHelper.showMainMenu(chatId, bot);
+                mostrarOpcionesKPIs(chatId, bot);
                 return;
             }
 
@@ -1818,19 +1818,19 @@ public class TareaBotController {
                 rowsInline.add(row);
             }
 
-            // Botón para volver al menú principal
+            // Botón para volver a las opciones de KPIs
             List<InlineKeyboardButton> lastRow = new ArrayList<>();
-            InlineKeyboardButton menuButton = new InlineKeyboardButton();
-            menuButton.setText("🔙 Volver al Menú");
-            menuButton.setCallbackData("MENU_PRINCIPAL");
-            lastRow.add(menuButton);
+            InlineKeyboardButton backButton = new InlineKeyboardButton();
+            backButton.setText("🔙 Volver a Opciones");
+            backButton.setCallbackData("VER_KPIS");
+            lastRow.add(backButton);
             rowsInline.add(lastRow);
 
             markupInline.setKeyboard(rowsInline);
 
             SendMessage message = new SendMessage();
             message.setChatId(chatId);
-            message.setText("📊 *Selecciona un usuario para ver sus KPIs:*");
+            message.setText("👤 *Selecciona un usuario para ver sus KPIs:*");
             message.setParseMode("Markdown");
             message.setReplyMarkup(markupInline);
 
@@ -1838,7 +1838,7 @@ public class TareaBotController {
         } catch (Exception e) {
             logger.error("Error al mostrar selección de usuarios para KPIs", e);
             BotHelper.sendMessageToTelegram(chatId, "❌ Error al cargar la lista de usuarios.", bot);
-            MenuBotHelper.showMainMenu(chatId, bot);
+            mostrarOpcionesKPIs(chatId, bot);
         }
     }
 
@@ -1956,18 +1956,26 @@ public class TareaBotController {
             // Botón para volver a la selección de usuarios
             List<InlineKeyboardButton> row1 = new ArrayList<>();
             InlineKeyboardButton backButton = new InlineKeyboardButton();
-            backButton.setText("👥 Volver a Usuarios");
-            backButton.setCallbackData("VER_KPIS");
+            backButton.setText("👤 Volver a Usuarios");
+            backButton.setCallbackData("VER_KPIS_USUARIOS");
             row1.add(backButton);
             rowsInline.add(row1);
 
-            // Botón para el menú principal
+            // Botón para volver a opciones de KPIs
             List<InlineKeyboardButton> row2 = new ArrayList<>();
+            InlineKeyboardButton optionsButton = new InlineKeyboardButton();
+            optionsButton.setText("📊 Opciones KPI");
+            optionsButton.setCallbackData("VER_KPIS");
+            row2.add(optionsButton);
+            rowsInline.add(row2);
+
+            // Botón para el menú principal
+            List<InlineKeyboardButton> row3 = new ArrayList<>();
             InlineKeyboardButton menuButton = new InlineKeyboardButton();
             menuButton.setText("🔙 Menú Principal");
             menuButton.setCallbackData("MENU_PRINCIPAL");
-            row2.add(menuButton);
-            rowsInline.add(row2);
+            row3.add(menuButton);
+            rowsInline.add(row3);
 
             markupInline.setKeyboard(rowsInline);
 
@@ -1983,6 +1991,315 @@ public class TareaBotController {
             logger.error("Error al mostrar KPIs del usuario", e);
             BotHelper.sendMessageToTelegram(chatId, "❌ Error al obtener los KPIs del usuario.", bot);
             mostrarSeleccionUsuariosParaKPIs(chatId, bot);
+        }
+    }
+
+    /**
+     * Muestra los KPIs de un sprint específico
+     * 
+     * @param sprintId ID del sprint
+     * @param chatId   ID del chat
+     * @param bot      Bot de Telegram
+     */
+    public void mostrarKPIsSprint(Long sprintId, Long chatId, TelegramLongPollingBot bot) {
+        try {
+            logger.info("Mostrando KPIs del sprint ID: " + sprintId);
+
+            // Obtener datos del sprint
+            Optional<Sprint> sprintOpt = sprintService.getSprintById(sprintId);
+            if (sprintOpt.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId, "❌ No se pudo encontrar el sprint.", bot);
+                mostrarSeleccionSprintsParaKPIs(chatId, bot);
+                return;
+            }
+
+            Sprint sprint = sprintOpt.get();
+
+            // Obtener todas las tareas del sprint
+            List<Tarea> tareasSprint = tareaService.getTareasBySprint(sprintId);
+
+            if (tareasSprint == null || tareasSprint.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        "📊 El sprint *" + sprint.getNombreSprint()
+                                + "* no tiene tareas asignadas, no es posible calcular KPIs.",
+                        bot);
+                mostrarSeleccionSprintsParaKPIs(chatId, bot);
+                return;
+            }
+
+            // Calcular KPIs
+            int totalTareas = tareasSprint.size();
+            int tareasCompletadas = 0;
+            int tareasPendientes = 0;
+            int tareasEnProceso = 0;
+            int horasEstimadasTotal = 0;
+            int horasRealesTotal = 0;
+            int tareasConHorasReales = 0;
+
+            // Map para agrupar tareas por usuario
+            Map<Long, List<Tarea>> tareasPorUsuario = new HashMap<>();
+
+            for (Tarea tarea : tareasSprint) {
+                if (tarea.getCompletado() == 1) {
+                    tareasCompletadas++;
+                    if (tarea.getHorasReales() != null) {
+                        horasRealesTotal += tarea.getHorasReales();
+                        tareasConHorasReales++;
+                    }
+                } else if (tarea.getEstadoID() != null && tarea.getEstadoID() == 2L) {
+                    tareasEnProceso++;
+                } else {
+                    tareasPendientes++;
+                }
+
+                if (tarea.getHorasEstimadas() != null) {
+                    horasEstimadasTotal += tarea.getHorasEstimadas();
+                }
+
+                // Agrupar tareas por usuario
+                if (tarea.getUsuarioID() != null) {
+                    tareasPorUsuario.computeIfAbsent(tarea.getUsuarioID(), k -> new ArrayList<>()).add(tarea);
+                }
+            }
+
+            // Calcular porcentajes
+            double porcentajeCompletitud = (totalTareas > 0) ? ((double) tareasCompletadas / totalTareas) * 100 : 0;
+            double eficiencia = (tareasConHorasReales > 0 && horasEstimadasTotal > 0)
+                    ? ((double) horasEstimadasTotal / horasRealesTotal) * 100
+                    : 0;
+
+            // Construir mensaje de KPIs
+            StringBuilder messageBuilder = new StringBuilder();
+            messageBuilder.append("📊 *KPIs del Sprint: ").append(sprint.getNombreSprint()).append("*\n\n");
+
+            // Fechas del sprint
+            if (sprint.getStartDate() != null) {
+                String fechaInicio = new java.text.SimpleDateFormat("yyyy-MM-dd").format(sprint.getStartDate());
+                messageBuilder.append("🗓️ Fecha inicio: ").append(fechaInicio).append("\n");
+            }
+
+            if (sprint.getEndDate() != null) {
+                String fechaFin = new java.text.SimpleDateFormat("yyyy-MM-dd").format(sprint.getEndDate());
+                messageBuilder.append("🗓️ Fecha fin: ").append(fechaFin).append("\n\n");
+            }
+
+            // Estadísticas generales
+            messageBuilder.append("🔢 *Estadísticas Generales:*\n");
+            messageBuilder.append("📋 Total de tareas: ").append(totalTareas).append("\n");
+            messageBuilder.append("✅ Tareas completadas: ").append(tareasCompletadas).append(" (")
+                    .append(String.format("%.1f", porcentajeCompletitud)).append("%)\n");
+            messageBuilder.append("🔄 Tareas en proceso: ").append(tareasEnProceso).append("\n");
+            messageBuilder.append("⏳ Tareas pendientes: ").append(tareasPendientes).append("\n\n");
+
+            // Estadísticas de tiempo
+            messageBuilder.append("⏱️ *Estadísticas de Tiempo:*\n");
+            messageBuilder.append("⌛ Horas estimadas totales: ").append(horasEstimadasTotal).append("\n");
+
+            if (tareasConHorasReales > 0) {
+                messageBuilder.append("⏰ Horas reales totales: ").append(horasRealesTotal).append("\n");
+
+                // Solo mostrar eficiencia si hay datos suficientes
+                if (eficiencia > 0) {
+                    String emojiEficiencia = (eficiencia >= 100) ? "🟢" : (eficiencia >= 80) ? "🟡" : "🔴";
+                    messageBuilder.append(emojiEficiencia).append(" Eficiencia global: ")
+                            .append(String.format("%.1f", eficiencia)).append("%\n\n");
+                }
+            } else {
+                messageBuilder.append("⚠️ No hay tareas completadas con horas reales registradas.\n\n");
+            }
+
+            // KPIs por usuario
+            if (!tareasPorUsuario.isEmpty()) {
+                messageBuilder.append("👥 *Participación por Usuario:*\n");
+
+                for (Map.Entry<Long, List<Tarea>> entry : tareasPorUsuario.entrySet()) {
+                    Long userId = entry.getKey();
+                    List<Tarea> tareasUsuario = entry.getValue();
+
+                    // Obtener información del usuario
+                    String nombreUsuario = "Usuario ID: " + userId;
+                    try {
+                        ResponseEntity<Usuario> usuarioResponse = usuarioService.getUsuarioById(userId);
+                        if (usuarioResponse != null && usuarioResponse.getStatusCode().is2xxSuccessful()
+                                && usuarioResponse.getBody() != null) {
+                            nombreUsuario = usuarioResponse.getBody().getNombre();
+                        }
+                    } catch (Exception e) {
+                        logger.warn("No se pudo obtener información del usuario ID: " + userId);
+                    }
+
+                    int tareasUsuarioCompletadas = (int) tareasUsuario.stream()
+                            .filter(t -> t.getCompletado() == 1)
+                            .count();
+
+                    double porcentajeContribucion = ((double) tareasUsuario.size() / totalTareas) * 100;
+                    double porcentajeCompletitudUsuario = (tareasUsuario.size() > 0)
+                            ? ((double) tareasUsuarioCompletadas / tareasUsuario.size()) * 100
+                            : 0;
+
+                    messageBuilder.append("👤 *").append(nombreUsuario).append(":* ");
+                    messageBuilder.append(tareasUsuario.size()).append(" tareas (")
+                            .append(String.format("%.1f", porcentajeContribucion)).append("% del total)\n");
+                    messageBuilder.append("✅ Completadas: ").append(tareasUsuarioCompletadas)
+                            .append(" (").append(String.format("%.1f", porcentajeCompletitudUsuario)).append("%)\n\n");
+                }
+            }
+
+            // Añadir una nota explicativa
+            messageBuilder
+                    .append("💡 *Nota:* La eficiencia se calcula comparando las horas estimadas con las horas reales.");
+
+            // Botones para opciones adicionales
+            InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+            List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+
+            // Botón para volver a la selección de sprints
+            List<InlineKeyboardButton> row1 = new ArrayList<>();
+            InlineKeyboardButton backButton = new InlineKeyboardButton();
+            backButton.setText("🏃 Volver a Sprints");
+            backButton.setCallbackData("VER_KPIS_SPRINTS");
+            row1.add(backButton);
+            rowsInline.add(row1);
+
+            // Botón para volver a opciones de KPIs
+            List<InlineKeyboardButton> row2 = new ArrayList<>();
+            InlineKeyboardButton optionsButton = new InlineKeyboardButton();
+            optionsButton.setText("📊 Opciones KPI");
+            optionsButton.setCallbackData("VER_KPIS");
+            row2.add(optionsButton);
+            rowsInline.add(row2);
+
+            // Botón para el menú principal
+            List<InlineKeyboardButton> row3 = new ArrayList<>();
+            InlineKeyboardButton menuButton = new InlineKeyboardButton();
+            menuButton.setText("🔙 Menú Principal");
+            menuButton.setCallbackData("MENU_PRINCIPAL");
+            row3.add(menuButton);
+            rowsInline.add(row3);
+
+            markupInline.setKeyboard(rowsInline);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText(messageBuilder.toString());
+            message.setParseMode("Markdown");
+            message.setReplyMarkup(markupInline);
+
+            bot.execute(message);
+
+        } catch (Exception e) {
+            logger.error("Error al mostrar KPIs del sprint", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al obtener los KPIs del sprint.", bot);
+            mostrarSeleccionSprintsParaKPIs(chatId, bot);
+        }
+    }
+
+    /**
+     * Muestra la selección de sprints para ver KPIs
+     * 
+     * @param chatId ID del chat
+     * @param bot    Bot de Telegram
+     */
+    public void mostrarSeleccionSprintsParaKPIs(Long chatId, TelegramLongPollingBot bot) {
+        try {
+            logger.info("Mostrando selección de sprints para ver KPIs");
+            List<Sprint> sprints = sprintService.getAllSprints();
+
+            if (sprints == null || sprints.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId, "❌ No hay sprints registrados en el sistema.", bot);
+                mostrarOpcionesKPIs(chatId, bot);
+                return;
+            }
+
+            // Crear teclado inline
+            InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+            List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+
+            // Agregar cada sprint como un botón
+            for (Sprint sprint : sprints) {
+                List<InlineKeyboardButton> row = new ArrayList<>();
+                InlineKeyboardButton button = new InlineKeyboardButton();
+                button.setText(sprint.getNombreSprint());
+                button.setCallbackData("VER_KPIS_SPRINT_" + sprint.getSprintID());
+                row.add(button);
+                rowsInline.add(row);
+            }
+
+            // Botón para volver a las opciones de KPIs
+            List<InlineKeyboardButton> lastRow = new ArrayList<>();
+            InlineKeyboardButton backButton = new InlineKeyboardButton();
+            backButton.setText("🔙 Volver a Opciones");
+            backButton.setCallbackData("VER_KPIS");
+            lastRow.add(backButton);
+            rowsInline.add(lastRow);
+
+            markupInline.setKeyboard(rowsInline);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText("🏃 *Selecciona un sprint para ver sus KPIs:*");
+            message.setParseMode("Markdown");
+            message.setReplyMarkup(markupInline);
+
+            bot.execute(message);
+        } catch (Exception e) {
+            logger.error("Error al mostrar selección de sprints para KPIs", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al cargar la lista de sprints.", bot);
+            mostrarOpcionesKPIs(chatId, bot);
+        }
+    }
+
+    /**
+     * Muestra el menú inicial de opciones para los KPIs
+     * 
+     * @param chatId ID del chat
+     * @param bot    Bot de Telegram
+     */
+    private void mostrarOpcionesKPIs(Long chatId, TelegramLongPollingBot bot) {
+        try {
+            logger.info("Mostrando opciones de KPIs");
+
+            // Crear teclado inline
+            InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+            List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+
+            // Opción para ver KPIs por Usuario
+            List<InlineKeyboardButton> row1 = new ArrayList<>();
+            InlineKeyboardButton userButton = new InlineKeyboardButton();
+            userButton.setText("👤 Por Usuario");
+            userButton.setCallbackData("VER_KPIS_USUARIOS");
+            row1.add(userButton);
+            rowsInline.add(row1);
+
+            // Opción para ver KPIs por Sprint
+            List<InlineKeyboardButton> row2 = new ArrayList<>();
+            InlineKeyboardButton sprintButton = new InlineKeyboardButton();
+            sprintButton.setText("🏃 Por Sprint");
+            sprintButton.setCallbackData("VER_KPIS_SPRINTS");
+            row2.add(sprintButton);
+            rowsInline.add(row2);
+
+            // Botón para volver al menú principal
+            List<InlineKeyboardButton> row3 = new ArrayList<>();
+            InlineKeyboardButton menuButton = new InlineKeyboardButton();
+            menuButton.setText("🔙 Volver al Menú");
+            menuButton.setCallbackData("MENU_PRINCIPAL");
+            row3.add(menuButton);
+            rowsInline.add(row3);
+
+            markupInline.setKeyboard(rowsInline);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText("📊 *Selecciona el tipo de KPIs que deseas ver:*");
+            message.setParseMode("Markdown");
+            message.setReplyMarkup(markupInline);
+
+            bot.execute(message);
+        } catch (Exception e) {
+            logger.error("Error al mostrar opciones de KPIs", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al cargar opciones de KPI.", bot);
+            MenuBotHelper.showMainMenu(chatId, bot);
         }
     }
 }

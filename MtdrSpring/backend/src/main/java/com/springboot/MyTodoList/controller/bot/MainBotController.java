@@ -161,6 +161,20 @@ public class MainBotController extends TelegramLongPollingBot {
             }
         }
 
+        // Process callbacks for viewing KPIs by sprint
+        if (callbackData.startsWith("VER_KPIS_SPRINT_")) {
+            try {
+                Long sprintId = Long.parseLong(callbackData.substring("VER_KPIS_SPRINT_".length()));
+                tareaBotController.mostrarKPIsSprint(sprintId, chatId, this);
+                return;
+            } catch (NumberFormatException e) {
+                logger.error("Error al procesar ID de sprint para KPIs: " + e.getMessage());
+                BotHelper.sendMessageToTelegram(chatId, "❌ Error al mostrar KPIs del sprint.", this);
+                MenuBotHelper.showMainMenu(chatId, this);
+                return;
+            }
+        }
+
         // Process the callback data for task completion
         if (callbackData.startsWith("COMPLETAR_TAREA_")) {
             // Extract task ID from callback data
@@ -197,6 +211,12 @@ public class MainBotController extends TelegramLongPollingBot {
                 break;
             case "VER_KPIS":
                 tareaBotController.handleMessage("📊 KPIs", chatId, telegramId, this);
+                break;
+            case "VER_KPIS_USUARIOS":
+                tareaBotController.mostrarSeleccionUsuariosParaKPIs(chatId, this);
+                break;
+            case "VER_KPIS_SPRINTS":
+                tareaBotController.mostrarSeleccionSprintsParaKPIs(chatId, this);
                 break;
             case "COMPLETAR_TAREAS":
                 tareaBotController.handleMessage("✅ Completar Tareas", chatId, telegramId, this);

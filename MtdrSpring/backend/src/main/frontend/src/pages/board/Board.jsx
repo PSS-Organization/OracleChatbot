@@ -17,7 +17,7 @@ const sprintColors = {
 const statusMapping = {
   1: "To Do",
   2: "In Progress",
-  3: "Review",
+  3: "Done",
   4: "Done",
 };
 
@@ -77,7 +77,7 @@ const Board = () => {
         description: task.descripcion,
         tag: `Sprint ${task.sprintID}`,
         tagColor: sprintColors[task.sprintID] || "bg-gray-200 text-gray-800",
-        status: statusMapping[task.estadoID] || "In Progress",
+        status: statusMapping[task.estadoID] || "Done",
         users: [{ avatar: "https://randomuser.me/api/portraits/men/1.jpg" }],
         date: new Date(task.fechaEntrega).toLocaleDateString("en-US", {
           month: "short",
@@ -166,7 +166,6 @@ const Board = () => {
   const columns = [
     { title: "To Do", status: "To Do" },
     { title: "In Progress", status: "In Progress" },
-    { title: "Review", status: "Review" },
     { title: "Done", status: "Done" },
   ];
 

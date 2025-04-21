@@ -13,28 +13,23 @@ const Signup = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-};
 
-const handlePhoneChange = (e) => {
-  const input = e.target.value.replace(/\D/g, "");
-  setPhone(input);
-};
+  const handlePhoneChange = (e) => {
+    const input = e.target.value.replace(/\D/g, "");
+    setPhone(input);
+  };
 
-const formatPhoneDisplay = (input) => {
-  if (!input) return "";
-  if (input.length <= 3) return input;
-  if (input.length <= 6)
-    return `${input.substring(0, 3)}-${input.substring(3)}`;
-  return `${input.substring(0, 3)}-${input.substring(3, 6)}-${input.substring(
-    6,
-    10
-  )}`;
-};
+  const formatPhoneDisplay = (input) => {
+    if (!input) return "";
+    if (input.length <= 3) return input;
+    if (input.length <= 6)
+      return `${input.substring(0, 3)}-${input.substring(3)}`;
+    return `${input.substring(0, 3)}-${input.substring(3, 6)}-${input.substring(
+      6,
+      10
+    )}`;
+  };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError("");
-  setLoading(true);
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -174,7 +169,6 @@ const handleSubmit = async (e) => {
           required
         />
 
-        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
         <button

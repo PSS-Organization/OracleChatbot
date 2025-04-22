@@ -25,15 +25,10 @@ import com.springboot.MyTodoList.util.TareaCreationManager;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 public class MainBotController extends TelegramLongPollingBot {
 
     private static final Logger logger = LoggerFactory.getLogger(MainBotController.class);
-    private final Executor messageExecutor = Executors.newFixedThreadPool(10); // Thread pool for message processing
 
     private final String botName;
     private final TareaBotController tareaBotController;
@@ -62,35 +57,28 @@ public class MainBotController extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
-        // Process update asynchronously to handle multiple messages concurrently
-        CompletableFuture.runAsync(() -> {
-            try {
-                // Handle callback queries (from inline buttons)
-                if (update.hasCallbackQuery()) {
-                    handleCallbackQuery(update.getCallbackQuery());
-                    return;
-                }
+        // Handle callback queries (from inline buttons)
+        if (update.hasCallbackQuery()) {
+            handleCallbackQuery(update.getCallbackQuery());
+            return;
+        }
 
-                if (update.hasMessage()) {
-                    Long chatId = update.getMessage().getChatId();
-                    Long telegramId = update.getMessage().getFrom().getId();
+        if (update.hasMessage()) {
+            Long chatId = update.getMessage().getChatId();
+            Long telegramId = update.getMessage().getFrom().getId();
 
-                    // Handle contact sharing
-                    if (update.getMessage().hasContact()) {
-                        handleContactShared(update.getMessage().getContact(), chatId, telegramId);
-                        return;
-                    }
-
-                    // Handle text messages
-                    if (update.getMessage().hasText()) {
-                        String messageText = update.getMessage().getText();
-                        handleTextMessage(messageText, chatId, telegramId);
-                    }
-                }
-            } catch (Exception e) {
-                logger.error("Error processing update: {}", e.getMessage(), e);
+            // Handle contact sharing
+            if (update.getMessage().hasContact()) {
+                handleContactShared(update.getMessage().getContact(), chatId, telegramId);
+                return;
             }
-        }, messageExecutor);
+
+            // Handle text messages
+            if (update.getMessage().hasText()) {
+                String messageText = update.getMessage().getText();
+                handleTextMessage(messageText, chatId, telegramId);
+            }
+        }
     }
 
     private void handleCallbackQuery(CallbackQuery callbackQuery) {
@@ -128,11 +116,6 @@ public class MainBotController extends TelegramLongPollingBot {
                 logger.error("Error al parsear ID de sprint: " + e.getMessage());
                 BotHelper.sendMessageToTelegram(chatId, "❌ Error al obtener tareas del sprint.", this);
                 MenuBotHelper.showMainMenu(chatId, this);
-            } catch (Exception e) {
-                logger.error("Error inesperado al mostrar tareas de sprint: " + e.getMessage(), e);
-                BotHelper.sendMessageToTelegram(chatId, "❌ Error al procesar el sprint. Volviendo al menú principal.",
-                        this);
-                MenuBotHelper.showMainMenu(chatId, this);
             }
             return;
         }
@@ -164,6 +147,34 @@ public class MainBotController extends TelegramLongPollingBot {
             }
         }
 
+        // Process callbacks for viewing KPIs by user
+        if (callbackData.startsWith("VER_KPIS_USER_")) {
+            try {
+                Long userId = Long.parseLong(callbackData.substring("VER_KPIS_USER_".length()));
+                tareaBotController.mostrarKPIsUsuario(userId, chatId, this);
+                return;
+            } catch (NumberFormatException e) {
+                logger.error("Error al procesar ID de usuario para KPIs: " + e.getMessage());
+                BotHelper.sendMessageToTelegram(chatId, "❌ Error al mostrar KPIs del usuario.", this);
+                MenuBotHelper.showMainMenu(chatId, this);
+                return;
+            }
+        }
+
+        // Process callbacks for viewing KPIs by sprint
+        if (callbackData.startsWith("VER_KPIS_SPRINT_")) {
+            try {
+                Long sprintId = Long.parseLong(callbackData.substring("VER_KPIS_SPRINT_".length()));
+                tareaBotController.mostrarKPIsSprint(sprintId, chatId, this);
+                return;
+            } catch (NumberFormatException e) {
+                logger.error("Error al procesar ID de sprint para KPIs: " + e.getMessage());
+                BotHelper.sendMessageToTelegram(chatId, "❌ Error al mostrar KPIs del sprint.", this);
+                MenuBotHelper.showMainMenu(chatId, this);
+                return;
+            }
+        }
+
         // Process the callback data for task completion
         if (callbackData.startsWith("COMPLETAR_TAREA_")) {
             // Extract task ID from callback data
@@ -177,7 +188,67 @@ public class MainBotController extends TelegramLongPollingBot {
             return;
         }
 
+        // Process callbacks for changing task state menu
+        if (callbackData.equals("CAMBIAR_ESTADO")) {
+            tareaBotController.showTaskStateChangeMenu(chatId, telegramId, this);
+            return;
+        }
+
+        // Process callbacks for selecting a task to change state
+        if (callbackData.startsWith("CAMBIAR_ESTADO_TAREA_")) {
+            try {
+                Long tareaId = Long.parseLong(callbackData.substring("CAMBIAR_ESTADO_TAREA_".length()));
+                tareaBotController.showTaskStateOptions(tareaId, chatId, this);
+            } catch (NumberFormatException e) {
+                logger.error("Error al parsear ID de tarea para cambio de estado: " + e.getMessage());
+                BotHelper.sendMessageToTelegram(chatId, "❌ Error al obtener opciones de estado.", this);
+                MenuBotHelper.showMainMenu(chatId, this);
+            }
+            return;
+        }
+
+        // Process callbacks for updating task state
+        if (callbackData.startsWith("ACTUALIZAR_ESTADO_")) {
+            try {
+                // Format is ACTUALIZAR_ESTADO_ESTADO_TAREA_ID
+                // Example: ACTUALIZAR_ESTADO_EN_PROCESO_TAREA_123
+                String[] parts = callbackData.split("_TAREA_");
+                if (parts.length == 2) {
+                    String estadoPart = parts[0].substring("ACTUALIZAR_ESTADO_".length());
+                    Long tareaId = Long.parseLong(parts[1]);
+                    Long nuevoEstadoId;
+
+                    // Determine estadoID based on estado name
+                    switch (estadoPart) {
+                        case "PENDIENTE":
+                            nuevoEstadoId = 1L;
+                            break;
+                        case "EN_PROCESO":
+                            nuevoEstadoId = 2L;
+                            break;
+                        case "COMPLETADA":
+                            nuevoEstadoId = 3L;
+                            break;
+                        default:
+                            logger.error("Estado desconocido: " + estadoPart);
+                            BotHelper.sendMessageToTelegram(chatId, "❌ Estado no válido.", this);
+                            return;
+                    }
+
+                    tareaBotController.updateTaskState(tareaId, nuevoEstadoId, chatId, telegramId, this);
+                }
+            } catch (Exception e) {
+                logger.error("Error al procesar cambio de estado: " + e.getMessage());
+                BotHelper.sendMessageToTelegram(chatId, "❌ Error al actualizar el estado de la tarea.", this);
+                MenuBotHelper.showMainMenu(chatId, this);
+            }
+            return;
+        }
+
         switch (callbackData) {
+            case "MENU_PRINCIPAL":
+                MenuBotHelper.showMainMenu(chatId, this);
+                break;
 
             // --------------------------------------------------------------------------------------------------------------------------------
             case "VER_TAREAS":
@@ -189,42 +260,20 @@ public class MainBotController extends TelegramLongPollingBot {
             case "MIS_TAREAS":
                 tareaBotController.handleMessage("👤 Mis Tareas", chatId, telegramId, this);
                 break;
-            case "VER_POR_SPRINT":
-                try {
-                    logger.info("Callback recibido para VER_POR_SPRINT");
-
-                    // Limpiar cualquier estado de creación de tarea activo
-                    if (TareaCreationManager.isInCreationProcess(chatId)) {
-                        logger.warn("Había una tarea en creación activa, limpiando estado antes de mostrar sprints");
-                        TareaCreationManager.clearState(chatId);
-                    }
-
-                    sprintBotController.handleMessage("🏃 Ver por Sprint", chatId, this);
-                } catch (Exception e) {
-                    logger.error("Error al mostrar sprints: " + e.getMessage(), e);
-                    BotHelper.sendMessageToTelegram(chatId,
-                            "❌ Error al obtener los sprints. Volviendo al menú principal.", this);
-                    MenuBotHelper.showMainMenu(chatId, this);
-                }
-                break;
             case "VER_POR_ESTADO":
                 tareaBotController.handleMessage("📊 Ver por Estado", chatId, telegramId, this);
                 break;
-            case "MENU_PRINCIPAL":
-                try {
-                    logger.info("Mostrando menú principal para chatId: " + chatId);
-                    MenuBotHelper.showMainMenu(chatId, this);
-                } catch (Exception e) {
-                    logger.error("Error al mostrar menú principal", e);
-                    // Intento de recuperación con un mensaje más simple
-                    try {
-                        BotHelper.sendMessageToTelegram(chatId,
-                                "❌ Error al mostrar el menú principal.\nPor favor, escribe /start para reiniciar.",
-                                this);
-                    } catch (Exception ex) {
-                        logger.error("Error fatal al comunicarse con el usuario", ex);
-                    }
-                }
+            case "VER_POR_SPRINT":
+                sprintBotController.handleMessage("🏃 Ver por Sprint", chatId, this);
+                break;
+            case "VER_KPIS":
+                tareaBotController.handleMessage("📊 KPIs", chatId, telegramId, this);
+                break;
+            case "VER_KPIS_USUARIOS":
+                tareaBotController.mostrarSeleccionUsuariosParaKPIs(chatId, this);
+                break;
+            case "VER_KPIS_SPRINTS":
+                tareaBotController.mostrarSeleccionSprintsParaKPIs(chatId, this);
                 break;
             case "COMPLETAR_TAREAS":
                 tareaBotController.handleMessage("✅ Completar Tareas", chatId, telegramId, this);

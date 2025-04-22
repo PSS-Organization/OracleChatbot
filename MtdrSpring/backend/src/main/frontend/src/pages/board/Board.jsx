@@ -299,12 +299,12 @@ const Board = () => {
       const updatedAllTasks = allTasks.map((task) =>
         task.id === completionModal.taskId
           ? {
-              ...task,
-              completed: true,
-              realHours: parseFloat(completionModal.realHours),
-              status: "Done",
-              estadoID: 4,
-            }
+            ...task,
+            completed: true,
+            realHours: parseFloat(completionModal.realHours),
+            status: "Done",
+            estadoID: 4,
+          }
           : task
       );
 
@@ -364,14 +364,12 @@ const Board = () => {
             {tasks.length} tasks in progress
             {showMyTasksOnly ? " (showing only my tasks)" : ""}
             {filters.sprints.length > 0
-              ? ` (filtered by ${filters.sprints.length} sprint${
-                  filters.sprints.length > 1 ? "s" : ""
-                })`
+              ? ` (filtered by ${filters.sprints.length} sprint${filters.sprints.length > 1 ? "s" : ""
+              })`
               : ""}
             {filters.users.length > 0
-              ? ` (filtered by ${filters.users.length} user${
-                  filters.users.length > 1 ? "s" : ""
-                })`
+              ? ` (filtered by ${filters.users.length} user${filters.users.length > 1 ? "s" : ""
+              })`
               : ""}
           </p>
           <DragDropContext onDragEnd={handleDragEnd}>
@@ -408,7 +406,7 @@ const Board = () => {
                                 !isAdmin &&
                                 (task.usuarioID == null ||
                                   task.usuarioID.toString() !==
-                                    currentUserId?.toString())
+                                  currentUserId?.toString())
                               }
                             >
                               {(provided) => (
@@ -418,8 +416,8 @@ const Board = () => {
                                   {...provided.dragHandleProps}
                                   className={
                                     !isAdmin &&
-                                    (task.usuarioID == null ||
-                                      task.usuarioID.toString() !==
+                                      (task.usuarioID == null ||
+                                        task.usuarioID.toString() !==
                                         currentUserId?.toString())
                                       ? "opacity-70"
                                       : ""
@@ -432,7 +430,7 @@ const Board = () => {
                                       isAdmin ||
                                       (task.usuarioID != null &&
                                         task.usuarioID.toString() ===
-                                          currentUserId?.toString())
+                                        currentUserId?.toString())
                                     }
                                   />
                                 </div>

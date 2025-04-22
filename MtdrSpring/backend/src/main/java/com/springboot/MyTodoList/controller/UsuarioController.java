@@ -143,7 +143,6 @@ public class UsuarioController {
         if (usuario.isPresent()) {
             Usuario user = usuario.get();
             String token = jwtService.generateToken(user.getCorreo(), user.getUsuarioID());
-
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Login successful");
@@ -160,6 +159,7 @@ public class UsuarioController {
     // 🔹 Nuevo endpoint para registrar usuarios
     @PostMapping("/signup")
     @Operation(summary = "Registrar un nuevo usuario", description = "Registra un usuario en la base de datos")
+
     public ResponseEntity<?> signup(@RequestBody Usuario usuario) {
         try {
             Usuario nuevoUsuario = usuarioService.createUsuario(usuario);

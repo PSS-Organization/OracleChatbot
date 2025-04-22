@@ -1910,9 +1910,10 @@ public class TareaBotController {
 
             // Calcular porcentajes
             double porcentajeCompletitud = (totalTareas > 0) ? ((double) tareasCompletadas / totalTareas) * 100 : 0;
-            double eficiencia = (tareasConHorasReales > 0 && horasEstimadasTotal > 0)
-                    ? ((double) horasEstimadasTotal / horasRealesTotal) * 100
-                    : 0;
+
+            // La eficiencia es el porcentaje de completitud (tareas completadas / tareas
+            // totales)
+            double eficiencia = porcentajeCompletitud;
 
             // Construir mensaje de KPIs
             StringBuilder messageBuilder = new StringBuilder();
@@ -1935,18 +1936,19 @@ public class TareaBotController {
 
                 // Solo mostrar eficiencia si hay datos suficientes
                 if (eficiencia > 0) {
-                    String emojiEficiencia = (eficiencia >= 100) ? "🟢" : (eficiencia >= 80) ? "🟡" : "🔴";
+                    String emojiEficiencia = (eficiencia >= 80) ? "🟢" : (eficiencia >= 50) ? "🟡" : "🔴";
                     messageBuilder.append(emojiEficiencia).append(" Eficiencia: ")
-                            .append(String.format("%.1f", eficiencia)).append("%\n");
+                            .append(String.format("%.1f", eficiencia)).append("% (")
+                            .append(tareasCompletadas).append("/").append(totalTareas).append(")\n");
 
-                    if (eficiencia >= 100) {
+                    if (eficiencia >= 80) {
                         messageBuilder.append(
-                                "🌟 *¡Excelente eficiencia!* Tareas completadas en menos tiempo del estimado.\n");
-                    } else if (eficiencia >= 80) {
-                        messageBuilder.append("👍 *Buena eficiencia.* Cercano a lo estimado.\n");
+                                "🌟 *¡Excelente eficiencia!* Alto porcentaje de tareas completadas.\n");
+                    } else if (eficiencia >= 50) {
+                        messageBuilder.append("👍 *Buena eficiencia.* Buen progreso en las tareas asignadas.\n");
                     } else {
                         messageBuilder
-                                .append("⚠️ *Eficiencia por mejorar.* Las tareas tomaron más tiempo del estimado.\n");
+                                .append("⚠️ *Eficiencia por mejorar.* Bajo porcentaje de tareas completadas.\n");
                     }
                 }
             } else {
@@ -1955,7 +1957,7 @@ public class TareaBotController {
 
             // Añadir una nota explicativa
             messageBuilder.append(
-                    "\n💡 *Nota:* La eficiencia se calcula comparando las horas estimadas con las horas reales.\n");
+                    "\n💡 *Nota:* La eficiencia se calcula como el porcentaje de tareas completadas sobre el total asignado.\n");
 
             // Botones para opciones adicionales
             InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
@@ -2072,9 +2074,10 @@ public class TareaBotController {
 
             // Calcular porcentajes
             double porcentajeCompletitud = (totalTareas > 0) ? ((double) tareasCompletadas / totalTareas) * 100 : 0;
-            double eficiencia = (tareasConHorasReales > 0 && horasEstimadasTotal > 0)
-                    ? ((double) horasEstimadasTotal / horasRealesTotal) * 100
-                    : 0;
+
+            // La eficiencia es el porcentaje de completitud (tareas completadas / tareas
+            // totales)
+            double eficiencia = porcentajeCompletitud;
 
             // Construir mensaje de KPIs
             StringBuilder messageBuilder = new StringBuilder();
@@ -2108,9 +2111,10 @@ public class TareaBotController {
 
                 // Solo mostrar eficiencia si hay datos suficientes
                 if (eficiencia > 0) {
-                    String emojiEficiencia = (eficiencia >= 100) ? "🟢" : (eficiencia >= 80) ? "🟡" : "🔴";
+                    String emojiEficiencia = (eficiencia >= 80) ? "🟢" : (eficiencia >= 50) ? "🟡" : "🔴";
                     messageBuilder.append(emojiEficiencia).append(" Eficiencia global: ")
-                            .append(String.format("%.1f", eficiencia)).append("%\n\n");
+                            .append(String.format("%.1f", eficiencia)).append("% (")
+                            .append(tareasCompletadas).append("/").append(totalTareas).append(")\n\n");
                 }
             } else {
                 messageBuilder.append("⚠️ No hay tareas completadas con horas reales registradas.\n\n");
@@ -2155,7 +2159,7 @@ public class TareaBotController {
 
             // Añadir una nota explicativa
             messageBuilder
-                    .append("💡 *Nota:* La eficiencia se calcula comparando las horas estimadas con las horas reales.");
+                    .append("💡 *Nota:* La eficiencia se calcula como el porcentaje de tareas completadas sobre el total asignado.");
 
             // Botones para opciones adicionales
             InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();

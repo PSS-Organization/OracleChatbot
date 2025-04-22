@@ -42,6 +42,8 @@ const Sprint = () => {
           addButtonLabel="Add Sprint"
           AddComponent={AddSprint}
           onAddComplete={fetchSprints} // refresh sprints when a new sprint is added
+          showAddButton={true}
+          showFilter={false}
         />
         <div className="p-4 lg:p-6 mt-16 lg:mt-0 overflow-auto">
           <h1 className="text-2xl font-bold mb-4">Sprints</h1>

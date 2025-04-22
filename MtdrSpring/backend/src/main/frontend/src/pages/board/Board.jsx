@@ -362,15 +362,18 @@ const Board = () => {
         <div className="flex min-h-screen bg-gray-100">
             <Sidebar />
             <div className="flex-1 flex flex-col w-full">
-                <Header
-                    headerTitle="Sprint Manager"
-                    addButtonLabel="Add Task"
-                    AddComponent={AddTask}
-                    onAddComplete={fetchTasks}
-                    showMyTasksOnly={showMyTasksOnly}
-                    onToggleMyTasks={toggleMyTasks}
-                    onFilterChange={handleFilterChange}
-                />
+            <Header
+                headerTitle="Board"
+                onFilterChange={handleFilterChange}
+                showUserFilter={true}
+                showVisibilityToggle={true} // Enable visibility toggle
+                showAddButton={true} // Enable Add Task button
+                addButtonLabel="Add Task"
+                AddComponent={AddTask}
+                onAddComplete={fetchTasks}
+                showMyTasksOnly={showMyTasksOnly}
+                onToggleMyTasks={toggleMyTasks}
+            />
                 <div className="p-4 lg:p-6 mt-16 lg:mt-0 overflow-auto">
                     <h1 className="text-2xl font-bold mb-4">Task Board</h1>
                     {loading && <p>Loading sprints...</p>}

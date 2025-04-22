@@ -1009,6 +1009,14 @@ public class TareaBotController {
             row1.add(completarButton);
             rowsInline.add(row1);
 
+            // Fila nueva para Cambiar Estado
+            List<InlineKeyboardButton> rowNueva = new ArrayList<>();
+            InlineKeyboardButton cambiarEstadoButton = new InlineKeyboardButton();
+            cambiarEstadoButton.setText("🔄 Cambiar estado");
+            cambiarEstadoButton.setCallbackData("CAMBIAR_ESTADO");
+            rowNueva.add(cambiarEstadoButton);
+            rowsInline.add(rowNueva);
+
             // Fila 2
             List<InlineKeyboardButton> row2 = new ArrayList<>();
             InlineKeyboardButton estadoButton = new InlineKeyboardButton();
@@ -2300,6 +2308,205 @@ public class TareaBotController {
             logger.error("Error al mostrar opciones de KPIs", e);
             BotHelper.sendMessageToTelegram(chatId, "❌ Error al cargar opciones de KPI.", bot);
             MenuBotHelper.showMainMenu(chatId, bot);
+        }
+    }
+
+    /**
+     * Muestra el menú para cambiar el estado de las tareas del usuario
+     * 
+     * @param chatId     ID del chat
+     * @param telegramId ID de Telegram del usuario
+     * @param bot        Bot de Telegram
+     */
+    public void showTaskStateChangeMenu(Long chatId, Long telegramId, TelegramLongPollingBot bot) {
+        try {
+            Optional<Usuario> usuarioOpt = usuarioService.getUsuarioByTelegramId(telegramId);
+            if (usuarioOpt.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId, "❌ No se encontró tu cuenta.", bot);
+                return;
+            }
+
+            Usuario usuario = usuarioOpt.get();
+            List<Tarea> tareasPendientes = tareaService.getTareasByUsuario(usuario.getUsuarioID())
+                    .stream()
+                    .filter(t -> t.getCompletado() == 0)
+                    .collect(Collectors.toList());
+
+            if (tareasPendientes.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId, "No tienes tareas pendientes para cambiar estado.", bot);
+                MenuBotHelper.showMainMenu(chatId, bot);
+                return;
+            }
+
+            // Crear teclado inline
+            InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+            List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+
+            // Agregar cada tarea como un botón
+            for (Tarea tarea : tareasPendientes) {
+                List<InlineKeyboardButton> row = new ArrayList<>();
+                InlineKeyboardButton button = new InlineKeyboardButton();
+                button.setText("🔄 " + tarea.getTareaNombre());
+                button.setCallbackData("CAMBIAR_ESTADO_TAREA_" + tarea.getTareaID());
+                row.add(button);
+                rowsInline.add(row);
+            }
+
+            // Botón para volver al menú principal
+            List<InlineKeyboardButton> lastRow = new ArrayList<>();
+            InlineKeyboardButton menuButton = new InlineKeyboardButton();
+            menuButton.setText(BotLabels.SHOW_MAIN_SCREEN.getLabel());
+            menuButton.setCallbackData("MENU_PRINCIPAL");
+            lastRow.add(menuButton);
+            rowsInline.add(lastRow);
+
+            markupInline.setKeyboard(rowsInline);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText("Selecciona la tarea cuyo estado deseas cambiar:");
+            message.setReplyMarkup(markupInline);
+
+            bot.execute(message);
+        } catch (Exception e) {
+            logger.error("Error al mostrar menú de cambiar estado de tareas", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al cargar tus tareas.", bot);
+            MenuBotHelper.showMainMenu(chatId, bot);
+        }
+    }
+
+    /**
+     * Muestra las opciones de estados disponibles para una tarea
+     * 
+     * @param tareaId ID de la tarea
+     * @param chatId  ID del chat
+     * @param bot     Bot de Telegram
+     */
+    public void showTaskStateOptions(Long tareaId, Long chatId, TelegramLongPollingBot bot) {
+        try {
+            ResponseEntity<Tarea> tareaResponse = tareaService.getTareaById(tareaId);
+            if (tareaResponse == null || !tareaResponse.getStatusCode().is2xxSuccessful()
+                    || tareaResponse.getBody() == null) {
+                BotHelper.sendMessageToTelegram(chatId, "❌ No se encontró la tarea.", bot);
+                MenuBotHelper.showMainMenu(chatId, bot);
+                return;
+            }
+
+            Tarea tarea = tareaResponse.getBody();
+
+            // Crear teclado inline
+            InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+            List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+
+            // Opciones de estado
+            String[] estados = { "PENDIENTE", "EN_PROCESO", "COMPLETADA" };
+            for (String estado : estados) {
+                // No mostrar el estado actual como opción
+                if ((estado.equals("PENDIENTE") && tarea.getEstadoID() == 1L) ||
+                        (estado.equals("EN_PROCESO") && tarea.getEstadoID() == 2L) ||
+                        (estado.equals("COMPLETADA") && tarea.getEstadoID() == 3L)) {
+                    continue;
+                }
+
+                List<InlineKeyboardButton> row = new ArrayList<>();
+                InlineKeyboardButton button = new InlineKeyboardButton();
+                button.setText(estado.replace("_", " "));
+                button.setCallbackData("ACTUALIZAR_ESTADO_" + estado + "_TAREA_" + tareaId);
+                row.add(button);
+                rowsInline.add(row);
+            }
+
+            // Botón para volver
+            List<InlineKeyboardButton> lastRow = new ArrayList<>();
+            InlineKeyboardButton backButton = new InlineKeyboardButton();
+            backButton.setText("⬅️ Volver");
+            backButton.setCallbackData("MIS_TAREAS");
+            lastRow.add(backButton);
+            rowsInline.add(lastRow);
+
+            markupInline.setKeyboard(rowsInline);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText("Tarea: *" + tarea.getTareaNombre() + "*\n" +
+                    "Estado actual: *" + getEstadoNombre(tarea.getEstadoID()) + "*\n\n" +
+                    "Selecciona el nuevo estado:");
+            message.setParseMode("Markdown");
+            message.setReplyMarkup(markupInline);
+
+            bot.execute(message);
+        } catch (Exception e) {
+            logger.error("Error al mostrar opciones de estado", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al cargar opciones de estado.", bot);
+            MenuBotHelper.showMainMenu(chatId, bot);
+        }
+    }
+
+    /**
+     * Actualiza el estado de una tarea
+     * 
+     * @param tareaId       ID de la tarea
+     * @param nuevoEstadoId ID del nuevo estado
+     * @param chatId        ID del chat
+     * @param telegramId    ID de Telegram del usuario
+     * @param bot           Bot de Telegram
+     */
+    public void updateTaskState(Long tareaId, Long nuevoEstadoId, Long chatId, Long telegramId,
+            TelegramLongPollingBot bot) {
+        try {
+            ResponseEntity<Tarea> tareaResponse = tareaService.getTareaById(tareaId);
+            if (tareaResponse == null || !tareaResponse.getStatusCode().is2xxSuccessful()
+                    || tareaResponse.getBody() == null) {
+                BotHelper.sendMessageToTelegram(chatId, "❌ No se encontró la tarea.", bot);
+                MenuBotHelper.showMainMenu(chatId, bot);
+                return;
+            }
+
+            Tarea tarea = tareaResponse.getBody();
+
+            // Si el nuevo estado es "COMPLETADA", también actualizamos el campo completado
+            if (nuevoEstadoId == 3L) {
+                tarea.setCompletado(1);
+                // Para tareas completadas, solicitamos las horas reales
+                BotHelper.sendMessageToTelegram(chatId,
+                        "⏱️ Por favor, ingresa las horas reales que tomó completar la tarea:", bot);
+                completionTasks.put(chatId, tarea);
+                awaitingHoursReal.put(chatId, true);
+                return;
+            } else {
+                // Actualizamos solo el estado
+                tarea.setEstadoID(nuevoEstadoId);
+                tareaService.updateTarea(tarea.getTareaID(), tarea);
+
+                BotHelper.sendMessageToTelegram(chatId,
+                        "✅ Estado actualizado exitosamente a *" + getEstadoNombre(nuevoEstadoId) + "*", bot);
+
+                // Volver a mostrar las tareas del usuario
+                showUserTasks(chatId, telegramId, bot);
+            }
+        } catch (Exception e) {
+            logger.error("Error al actualizar estado de tarea", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al actualizar estado.", bot);
+            MenuBotHelper.showMainMenu(chatId, bot);
+        }
+    }
+
+    /**
+     * Obtiene el nombre del estado a partir de su ID
+     * 
+     * @param estadoId ID del estado
+     * @return Nombre del estado
+     */
+    private String getEstadoNombre(Long estadoId) {
+        switch (estadoId.intValue()) {
+            case 1:
+                return "PENDIENTE";
+            case 2:
+                return "EN PROCESO";
+            case 3:
+                return "COMPLETADA";
+            default:
+                return "DESCONOCIDO";
         }
     }
 }

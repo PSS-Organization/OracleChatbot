@@ -188,6 +188,63 @@ public class MainBotController extends TelegramLongPollingBot {
             return;
         }
 
+        // Process callbacks for changing task state menu
+        if (callbackData.equals("CAMBIAR_ESTADO")) {
+            tareaBotController.showTaskStateChangeMenu(chatId, telegramId, this);
+            return;
+        }
+
+        // Process callbacks for selecting a task to change state
+        if (callbackData.startsWith("CAMBIAR_ESTADO_TAREA_")) {
+            try {
+                Long tareaId = Long.parseLong(callbackData.substring("CAMBIAR_ESTADO_TAREA_".length()));
+                tareaBotController.showTaskStateOptions(tareaId, chatId, this);
+            } catch (NumberFormatException e) {
+                logger.error("Error al parsear ID de tarea para cambio de estado: " + e.getMessage());
+                BotHelper.sendMessageToTelegram(chatId, "❌ Error al obtener opciones de estado.", this);
+                MenuBotHelper.showMainMenu(chatId, this);
+            }
+            return;
+        }
+
+        // Process callbacks for updating task state
+        if (callbackData.startsWith("ACTUALIZAR_ESTADO_")) {
+            try {
+                // Format is ACTUALIZAR_ESTADO_ESTADO_TAREA_ID
+                // Example: ACTUALIZAR_ESTADO_EN_PROCESO_TAREA_123
+                String[] parts = callbackData.split("_TAREA_");
+                if (parts.length == 2) {
+                    String estadoPart = parts[0].substring("ACTUALIZAR_ESTADO_".length());
+                    Long tareaId = Long.parseLong(parts[1]);
+                    Long nuevoEstadoId;
+
+                    // Determine estadoID based on estado name
+                    switch (estadoPart) {
+                        case "PENDIENTE":
+                            nuevoEstadoId = 1L;
+                            break;
+                        case "EN_PROCESO":
+                            nuevoEstadoId = 2L;
+                            break;
+                        case "COMPLETADA":
+                            nuevoEstadoId = 3L;
+                            break;
+                        default:
+                            logger.error("Estado desconocido: " + estadoPart);
+                            BotHelper.sendMessageToTelegram(chatId, "❌ Estado no válido.", this);
+                            return;
+                    }
+
+                    tareaBotController.updateTaskState(tareaId, nuevoEstadoId, chatId, telegramId, this);
+                }
+            } catch (Exception e) {
+                logger.error("Error al procesar cambio de estado: " + e.getMessage());
+                BotHelper.sendMessageToTelegram(chatId, "❌ Error al actualizar el estado de la tarea.", this);
+                MenuBotHelper.showMainMenu(chatId, this);
+            }
+            return;
+        }
+
         switch (callbackData) {
             case "MENU_PRINCIPAL":
                 MenuBotHelper.showMainMenu(chatId, this);

@@ -18,7 +18,6 @@ const statusMapping = {
   1: "To Do",
   2: "In Progress",
   3: "Done",
-  4: "Done",
 };
 
 const Board = () => {
@@ -242,10 +241,9 @@ const Board = () => {
   // Update task status
   const updateTaskStatus = async (taskId, newStatus) => {
     // Determine the new estadoID (1, 2, 3, or 4)
-    const estadoID =
-      Object.entries(statusMapping).find(
-        ([_, name]) => name === newStatus
-      )?.[0] || 1;
+    const estadoID = Object.entries(statusMapping).find(
+      ([_, name]) => name === newStatus
+    )?.[0];
 
     // Update local state
     const updatedTasks = tasks.map((task) =>
@@ -290,8 +288,8 @@ const Board = () => {
         `${API_TAREAS}/${completionModal.taskId}/completar`,
         {
           horasReales: parseInt(completionModal.realHours),
-          comentario: completionModal.comment,
           completado: 1,
+          estadoID: 3,
         }
       );
 
@@ -299,12 +297,12 @@ const Board = () => {
       const updatedAllTasks = allTasks.map((task) =>
         task.id === completionModal.taskId
           ? {
-            ...task,
-            completed: true,
-            realHours: parseFloat(completionModal.realHours),
-            status: "Done",
-            estadoID: 4,
-          }
+              ...task,
+              completed: true,
+              realHours: parseFloat(completionModal.realHours),
+              status: "Done",
+              estadoID: 3,
+            }
           : task
       );
 
@@ -312,7 +310,7 @@ const Board = () => {
       filterTasks(updatedAllTasks);
 
       // Also update task status
-      await updateTaskStatus(completionModal.taskId, "Done");
+      // await updateTaskStatus(completionModal.taskId, "Done");
 
       // Close the modal
       setCompletionModal({
@@ -373,7 +371,7 @@ const Board = () => {
               : ""}
           </p>
           <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
               {columns.map((column) => (
                 <Droppable droppableId={column.status} key={column.status}>
                   {(provided) => (
@@ -458,7 +456,7 @@ const Board = () => {
               <strong>{completionModal.taskName}</strong>
             </p>
 
-            <form onSubmit={handleCompletionSubmit}>
+            <form onSubmit={e => e.preventDefault()}>
               <div className="mb-4">
                 <label
                   className="block text-gray-700 text-sm font-bold mb-2"
@@ -516,7 +514,8 @@ const Board = () => {
                   Cancelar
                 </button>
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleCompletionSubmit}
                   className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
                   disabled={completionModal.isSubmitting}
                 >

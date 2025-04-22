@@ -33,7 +33,11 @@ const Header = ({
         // Fetch sprints
         const sprintsResponse = await axiosInstance.get(API_SPRINTS);
         if (sprintsResponse.data) {
-          setSprints(sprintsResponse.data);
+          // API may return an array or a paginated object with 'content'
+          const sprintList = Array.isArray(sprintsResponse.data)
+            ? sprintsResponse.data
+            : sprintsResponse.data.content || [];
+          setSprints(sprintList);
         }
 
         // Fetch users

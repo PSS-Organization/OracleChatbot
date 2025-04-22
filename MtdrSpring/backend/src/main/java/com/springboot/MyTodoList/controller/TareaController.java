@@ -186,7 +186,7 @@ public class TareaController {
             // Actualizar la tarea
             tarea.setHorasReales(completarDTO.getHorasReales());
             tarea.setCompletado(completarDTO.getCompletado() != null ? completarDTO.getCompletado() : 1);
-            tarea.setEstadoID(4L); // Establecer estado "Done"
+            tarea.setEstadoID(3L); // Establecer estado "Done"
             
             // Si hay comentario, podría guardarse en otro campo o tabla relacionada
             // En este caso se omite porque no hay campo para comentarios en el modelo Tarea

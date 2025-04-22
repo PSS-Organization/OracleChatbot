@@ -114,8 +114,8 @@ public class MenuBotHelper {
         // Fila 3
         List<InlineKeyboardButton> row3 = new ArrayList<>();
         InlineKeyboardButton button5 = new InlineKeyboardButton();
-        button5.setText("📊 Ver por Estado");
-        button5.setCallbackData("VER_POR_ESTADO");
+        button5.setText("📊 KPIs");
+        button5.setCallbackData("VER_KPIS");
 
         row3.add(button5);
         rowsInline.add(row3);

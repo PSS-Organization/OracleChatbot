@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { FilterList, Add, Close, Visibility, VisibilityOff } from "@mui/icons-material";
-import { getBackendUrl } from "../../utils/getBackendUrl";
+import {
+  FilterList,
+  Add,
+  Close,
+  Visibility,
+  VisibilityOff,
+} from "@mui/icons-material";
+import axiosInstance from "../../utils/axiosConfig";
+import { API_SPRINTS } from "../../API";
 
 const Header = ({
   headerTitle = "Default Title",
@@ -26,21 +33,20 @@ const Header = ({
   useEffect(() => {
     const fetchFilterData = async () => {
       try {
-        const backendUrl = await getBackendUrl();
         // Fetch sprints
-        const sprintsResponse = await fetch(`${backendUrl}/sprints`);
-        if (sprintsResponse.ok) {
-          const sprintsData = await sprintsResponse.json();
-          setSprints(sprintsData);
+        const sprintsResponse = await axiosInstance.get(API_SPRINTS);
+        if (sprintsResponse.data) {
+          // API may return an array or a paginated object with 'content'
+          const sprintList = Array.isArray(sprintsResponse.data)
+            ? sprintsResponse.data
+            : sprintsResponse.data.content || [];
+          setSprints(sprintList);
         }
 
-        // Fetch users if user filter is enabled
-        if (showUserFilter) {
-          const usersResponse = await fetch(`${backendUrl}/usuarios/all`);
-          if (usersResponse.ok) {
-            const usersData = await usersResponse.json();
-            setUsuarios(usersData);
-          }
+        // Fetch users
+        const usersResponse = await axiosInstance.get("/usuarios/all");
+        if (usersResponse.data) {
+          setUsuarios(usersResponse.data);
         }
       } catch (err) {
         console.error("Error fetching filter data:", err);
@@ -59,6 +65,7 @@ const Header = ({
       setSelectedSprints([...selectedSprints, sprintId]);
     } else {
       setSelectedSprints(selectedSprints.filter((id) => id !== sprintId));
+      setSelectedSprints(selectedSprints.filter((id) => id !== sprintId));
     }
   };
 
@@ -66,6 +73,7 @@ const Header = ({
     if (e.target.checked) {
       setSelectedUsers([...selectedUsers, userId]);
     } else {
+      setSelectedUsers(selectedUsers.filter((id) => id !== userId));
       setSelectedUsers(selectedUsers.filter((id) => id !== userId));
     }
   };
@@ -218,6 +226,11 @@ const Header = ({
             >
               <Close />
             </button>
+
+            {/* Título opcional */}
+            {/* <h2 className="text-xl font-bold mb-4">{addButtonLabel}</h2> */}
+
+            {/* Renderizamos el componente dinámico */}
             {AddComponent && <AddComponent onAddComplete={handleAddSuccess} />}
           </div>
         </div>

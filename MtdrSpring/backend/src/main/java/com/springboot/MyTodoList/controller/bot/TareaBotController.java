@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,8 +40,8 @@ public class TareaBotController {
     private final UsuarioService usuarioService;
     private final SprintService sprintService;
 
-    private static final Map<Long, Tarea> completionTasks = new ConcurrentHashMap<>();
-    private static final Map<Long, Boolean> awaitingHoursReal = new ConcurrentHashMap<>();
+    private static Map<Long, Tarea> completionTasks = new HashMap<>();
+    private static Map<Long, Boolean> awaitingHoursReal = new HashMap<>();
 
     public TareaBotController(TareaService tareaService, UsuarioService usuarioService, SprintService sprintService) {
         this.tareaService = tareaService;
@@ -57,6 +56,8 @@ public class TareaBotController {
                 || messageText.equals("✅ Completar Tareas")
                 || messageText.equals("📋 Historial Completadas")
                 || messageText.equals("📊 Ver por Estado")
+                || messageText.equals("📊 KPIs")
+                || messageText.equals("VER_KPIS")
                 || messageText.startsWith("ESTADO_") // For state filtering
                 || messageText.equals("👥 Ver Tareas")
                 || messageText.equals("VER_TAREAS")
@@ -87,6 +88,11 @@ public class TareaBotController {
 
         if (messageText.equals("👥 Ver Tareas") || messageText.equals("VER_TAREAS")) {
             mostrarSeleccionUsuarios(chatId, bot);
+            return;
+        }
+
+        if (messageText.equals("📊 KPIs") || messageText.equals("VER_KPIS")) {
+            mostrarOpcionesKPIs(chatId, bot);
             return;
         }
 
@@ -183,6 +189,140 @@ public class TareaBotController {
         }
     }
 
+    /**
+     * Generates a standardized string representation of a task with consistent
+     * formatting and emojis
+     * 
+     * @param tarea               The task to format
+     * @param includeDetailedInfo Whether to include all available details (true) or
+     *                            a more compact version (false)
+     * @return A formatted string describing the task
+     */
+    private String formatTareaStandard(Tarea tarea, boolean includeDetailedInfo) {
+        if (tarea == null) {
+            return "❌ Tarea no disponible";
+        }
+
+        StringBuilder tareaInfo = new StringBuilder();
+
+        // Determine status icon
+        String statusIcon;
+        if (tarea.getCompletado() == 1) {
+            statusIcon = "✅";
+        } else if (tarea.getEstadoID() != null && tarea.getEstadoID() == 2L) {
+            statusIcon = "🔄";
+        } else {
+            statusIcon = "⏳";
+        }
+
+        // Format task name with status icon
+        tareaInfo.append(statusIcon).append(" *")
+                .append(tarea.getTareaNombre() != null ? tarea.getTareaNombre() : "Sin nombre").append("*\n");
+
+        // Description
+        tareaInfo.append("📝 ").append(tarea.getDescripcion() != null ? tarea.getDescripcion() : "Sin descripción")
+                .append("\n");
+
+        // Priority
+        String prioridadIcon;
+        if (tarea.getPrioridad() != null) {
+            switch (tarea.getPrioridad()) {
+                case "ALTA":
+                    prioridadIcon = "⬆️";
+                    break;
+                case "MEDIA":
+                    prioridadIcon = "↔️";
+                    break;
+                default:
+                    prioridadIcon = "⬇️";
+                    break;
+            }
+            tareaInfo.append(prioridadIcon).append(" Prioridad: ").append(tarea.getPrioridad()).append("\n");
+        }
+
+        // Due date
+        if (tarea.getFechaEntrega() != null) {
+            String formattedDate = tarea.getFechaEntrega().toLocalDate()
+                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            tareaInfo.append("📅 Entrega: ").append(formattedDate).append("\n");
+        } else {
+            tareaInfo.append("📅 Entrega: Sin fecha\n");
+        }
+
+        // Estimated hours
+        if (tarea.getHorasEstimadas() != null) {
+            tareaInfo.append("⏱️ Horas estimadas: ").append(tarea.getHorasEstimadas()).append("\n");
+        }
+
+        // Real hours (only if task is completed)
+        if (tarea.getCompletado() == 1 && tarea.getHorasReales() != null) {
+            tareaInfo.append("⏱️ Horas reales: ").append(tarea.getHorasReales()).append("\n");
+        }
+
+        // Only include detailed info if requested
+        if (includeDetailedInfo) {
+            // Creation date
+            if (tarea.getFechaCreacion() != null) {
+                String formattedCreationDate = tarea.getFechaCreacion().toLocalDate()
+                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                tareaInfo.append("🗓️ Creada: ").append(formattedCreationDate).append("\n");
+            }
+
+            // User information if available
+            if (tarea.getUsuarioID() != null) {
+                try {
+                    ResponseEntity<Usuario> usuarioResponse = usuarioService.getUsuarioById(tarea.getUsuarioID());
+                    if (usuarioResponse != null && usuarioResponse.getStatusCode().is2xxSuccessful()
+                            && usuarioResponse.getBody() != null) {
+                        Usuario usuario = usuarioResponse.getBody();
+                        tareaInfo.append("👤 Asignada a: ").append(usuario.getNombre()).append("\n");
+                    } else {
+                        tareaInfo.append("👤 Asignada a: ID ").append(tarea.getUsuarioID()).append("\n");
+                    }
+                } catch (Exception e) {
+                    logger.warn("No se pudo obtener información del usuario para la tarea: " + tarea.getTareaID());
+                    tareaInfo.append("👤 Asignada a: ID ").append(tarea.getUsuarioID()).append("\n");
+                }
+            }
+
+            // Sprint information if available
+            if (tarea.getSprintID() != null) {
+                try {
+                    Optional<Sprint> sprintOpt = sprintService.getSprintById(tarea.getSprintID());
+                    if (sprintOpt.isPresent()) {
+                        tareaInfo.append("🏃 Sprint: ").append(sprintOpt.get().getNombreSprint()).append("\n");
+                    } else {
+                        tareaInfo.append("🏃 Sprint: ID ").append(tarea.getSprintID()).append("\n");
+                    }
+                } catch (Exception e) {
+                    logger.warn("No se pudo obtener información del sprint para la tarea: " + tarea.getTareaID());
+                    tareaInfo.append("🏃 Sprint: ID ").append(tarea.getSprintID()).append("\n");
+                }
+            }
+
+            // Estado information
+            if (tarea.getEstadoID() != null) {
+                String estadoTexto;
+                switch (tarea.getEstadoID().intValue()) {
+                    case 1:
+                        estadoTexto = "PENDIENTE";
+                        break;
+                    case 2:
+                        estadoTexto = "EN PROCESO";
+                        break;
+                    case 3:
+                        estadoTexto = "COMPLETADA";
+                        break;
+                    default:
+                        estadoTexto = "DESCONOCIDO";
+                }
+                tareaInfo.append("🔍 Estado: ").append(estadoTexto).append("\n");
+            }
+        }
+
+        return tareaInfo.toString();
+    }
+
     public void mostrarTodasLasTareas(Long chatId, TelegramLongPollingBot bot) {
         logger.info("Iniciando mostrarTodasLasTareas para chatId: " + chatId);
         try {
@@ -201,53 +341,8 @@ public class TareaBotController {
 
             for (Tarea tarea : tareas) {
                 try {
-                    // Add basic task information
-                    String nombre = tarea.getTareaNombre() != null ? tarea.getTareaNombre() : "Sin nombre";
-                    String descripcion = tarea.getDescripcion() != null ? tarea.getDescripcion() : "Sin descripción";
-
-                    // Format date if available
-                    String formattedDate = "";
-                    if (tarea.getFechaEntrega() != null) {
-                        formattedDate = "📅 Entrega: " + tarea.getFechaEntrega().toLocalDate()
-                                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + "\n";
-                    }
-
-                    messageText.append("🔹 ").append(nombre).append("\n")
-                            .append("📄 ").append(descripcion).append("\n");
-
-                    if (!formattedDate.isEmpty()) {
-                        messageText.append(formattedDate);
-                    }
-
-                    // Add information about user and sprint
-                    try {
-                        // Get user info, handling ResponseEntity properly
-                        if (tarea.getUsuarioID() != null) {
-                            ResponseEntity<Usuario> usuarioResponse = usuarioService
-                                    .getUsuarioById(tarea.getUsuarioID());
-                            if (usuarioResponse != null && usuarioResponse.getStatusCode().is2xxSuccessful()
-                                    && usuarioResponse.getBody() != null) {
-                                Usuario usuario = usuarioResponse.getBody();
-                                messageText.append("👤 Asignada a: ").append(usuario.getNombre()).append("\n");
-                            }
-                        }
-
-                        // Get sprint info, handling Optional properly
-                        if (tarea.getSprintID() != null) {
-                            Optional<Sprint> sprintOptional = sprintService.getSprintById(tarea.getSprintID());
-                            if (sprintOptional != null && sprintOptional.isPresent()) {
-                                Sprint sprint = sprintOptional.get();
-                                messageText.append("🏃 Sprint: ").append(sprint.getNombreSprint()).append("\n");
-                            }
-                        }
-                    } catch (Exception e) {
-                        logger.error("Error al obtener datos adicionales de la tarea ID: " +
-                                (tarea.getTareaID() != null ? tarea.getTareaID() : "desconocido"), e);
-                        // Continue without additional data
-                    }
-
-                    // Add a blank line between tasks for better readability
-                    messageText.append("\n");
+                    // Use the standardized task formatter with detailed info
+                    messageText.append(formatTareaStandard(tarea, true)).append("\n");
                 } catch (Exception e) {
                     logger.error("Error procesando tarea individual", e);
                     // Skip this task and continue with the next one
@@ -891,14 +986,10 @@ public class TareaBotController {
 
             StringBuilder messageBuilder = new StringBuilder();
             messageBuilder.append("👤 *MIS TAREAS:*\n\n");
+
+            // Use the standardized task formatter for each task with detailed info
             for (Tarea tarea : tareas) {
-                String estado = tarea.getCompletado() == 1 ? "✅" : "⏳";
-                String formattedDate = tarea.getFechaEntrega() != null
-                        ? tarea.getFechaEntrega().toLocalDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-                        : "Sin fecha";
-                messageBuilder.append(estado).append(" *").append(tarea.getTareaNombre()).append("*\n")
-                        .append("📝 ").append(tarea.getDescripcion()).append("\n")
-                        .append("📅 Entrega: ").append(formattedDate).append("\n\n");
+                messageBuilder.append(formatTareaStandard(tarea, true)).append("\n");
             }
 
             SendMessage message = new SendMessage();
@@ -917,6 +1008,14 @@ public class TareaBotController {
             completarButton.setCallbackData("COMPLETAR_TAREAS");
             row1.add(completarButton);
             rowsInline.add(row1);
+
+            // Fila nueva para Cambiar Estado
+            List<InlineKeyboardButton> rowNueva = new ArrayList<>();
+            InlineKeyboardButton cambiarEstadoButton = new InlineKeyboardButton();
+            cambiarEstadoButton.setText("🔄 Cambiar estado");
+            cambiarEstadoButton.setCallbackData("CAMBIAR_ESTADO");
+            rowNueva.add(cambiarEstadoButton);
+            rowsInline.add(rowNueva);
 
             // Fila 2
             List<InlineKeyboardButton> row2 = new ArrayList<>();
@@ -1098,16 +1197,9 @@ public class TareaBotController {
             StringBuilder messageBuilder = new StringBuilder();
             messageBuilder.append("📋 *TAREAS COMPLETADAS:*\n\n");
 
+            // Use the standardized task formatter for each completed task
             for (Tarea tarea : tareasCompletadas) {
-                messageBuilder.append("🔸 ").append(tarea.getTareaNombre()).append("\n")
-                        .append("📝 ").append(tarea.getDescripcion()).append("\n")
-                        .append("📅 Fecha entrega: ")
-                        .append(tarea.getFechaEntrega() != null ? tarea.getFechaEntrega().toLocalDate()
-                                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "Sin fecha")
-                        .append("\n")
-                        .append("⏱️ Horas estimadas: ").append(tarea.getHorasEstimadas()).append("\n")
-                        .append("⏱️ Horas reales: ").append(tarea.getHorasReales()).append("\n")
-                        .append("Estado: COMPLETADA\n\n");
+                messageBuilder.append(formatTareaStandard(tarea, true)).append("\n");
             }
 
             SendMessage message = new SendMessage();
@@ -1222,19 +1314,9 @@ public class TareaBotController {
             StringBuilder messageBuilder = new StringBuilder();
             messageBuilder.append("📊 *TAREAS EN ESTADO: ").append(estado.replace("_", " ")).append("*\n\n");
 
+            // Use the standardized task formatter for each filtered task
             for (Tarea tarea : tareasFiltradas) {
-                messageBuilder.append("🔸 *").append(tarea.getTareaNombre()).append("*\n")
-                        .append("📝 ").append(tarea.getDescripcion()).append("\n")
-                        .append("📅 Entrega: ")
-                        .append(tarea.getFechaEntrega() != null ? tarea.getFechaEntrega().toLocalDate()
-                                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "Sin fecha")
-                        .append("\n")
-                        .append("⏱️ Horas estimadas: ").append(tarea.getHorasEstimadas()).append("\n");
-
-                if (tarea.getHorasReales() != null) {
-                    messageBuilder.append("⏱️ Horas reales: ").append(tarea.getHorasReales()).append("\n");
-                }
-                messageBuilder.append("\n");
+                messageBuilder.append(formatTareaStandard(tarea, true)).append("\n");
             }
 
             SendMessage message = new SendMessage();
@@ -1574,7 +1656,31 @@ public class TareaBotController {
                 return;
             }
 
-            StringBuilder messageBuilder = formatearListaTareas(tareas, usuario.getNombre());
+            // Filtrar solo tareas pendientes o en proceso (no completadas)
+            List<Tarea> tareasPendientesOEnProceso = tareas.stream()
+                    .filter(tarea -> tarea.getCompletado() == 0 ||
+                            (tarea.getEstadoID() != null && tarea.getEstadoID() != 3L))
+                    .collect(Collectors.toList());
+
+            if (tareasPendientesOEnProceso.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        "📋 *" + usuario.getNombre() + "* no tiene tareas pendientes o en proceso actualmente.", bot);
+                mostrarSeleccionUsuarios(chatId, bot);
+                return;
+            }
+
+            StringBuilder messageBuilder = new StringBuilder();
+            messageBuilder.append("📋 *Tareas pendientes/en proceso de ").append(usuario.getNombre()).append(":*\n\n");
+
+            for (Tarea tarea : tareasPendientesOEnProceso) {
+                try {
+                    // Use the standardized task formatter with detailed info
+                    messageBuilder.append(formatTareaStandard(tarea, true)).append("\n");
+                } catch (Exception e) {
+                    logger.error("Error al formatear tarea individual", e);
+                    // Continuar con la siguiente tarea
+                }
+            }
 
             // Verificar si el mensaje es demasiado largo para Telegram (límite 4096
             // caracteres)
@@ -1618,64 +1724,6 @@ public class TareaBotController {
             BotHelper.sendMessageToTelegram(chatId, "❌ Error al obtener las tareas del usuario.", bot);
             mostrarSeleccionUsuarios(chatId, bot);
         }
-    }
-
-    /**
-     * Formatea una lista de tareas para mostrar en Telegram
-     * 
-     * @param tareas        Lista de tareas
-     * @param nombreUsuario Nombre del usuario para el título
-     * @return StringBuilder con el mensaje formateado
-     */
-    private StringBuilder formatearListaTareas(List<Tarea> tareas, String nombreUsuario) {
-        // Pre-allocate a StringBuilder with larger capacity to avoid reallocations
-        StringBuilder messageBuilder = new StringBuilder(1024);
-        messageBuilder.append("📋 *Tareas de ").append(nombreUsuario).append(":*\n\n");
-
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-
-        for (Tarea tarea : tareas) {
-            try {
-                // Optimize icon selection with a ternary operator
-                String estadoIcono = tarea.getCompletado() == 1 ? "✅" : (tarea.getEstadoID() == 2L ? "🔄" : "⏳");
-
-                // Format date more efficiently
-                String fechaStr = tarea.getFechaEntrega() != null
-                        ? tarea.getFechaEntrega().toLocalDate().format(dateFormatter)
-                        : "Sin fecha";
-
-                // Use StringBuilder's append method chain for better performance
-                messageBuilder.append(estadoIcono).append(" *").append(tarea.getTareaNombre()).append("*\n")
-                        .append("📝 ").append(tarea.getDescripcion()).append("\n")
-                        .append("📅 Entrega: ").append(fechaStr).append("\n")
-                        .append("⏱️ Horas est.: ").append(tarea.getHorasEstimadas()).append("\n");
-
-                // Incluir horas reales si está completada
-                if (tarea.getCompletado() == 1 && tarea.getHorasReales() != null) {
-                    messageBuilder.append("⏱️ Horas reales: ").append(tarea.getHorasReales()).append("\n");
-                }
-
-                // Include sprint info conditionally without extra queries when possible
-                if (tarea.getSprintID() != null) {
-                    try {
-                        Optional<Sprint> sprintOpt = sprintService.getSprintById(tarea.getSprintID());
-                        if (sprintOpt.isPresent()) {
-                            messageBuilder.append("🏃 Sprint: ").append(sprintOpt.get().getNombreSprint()).append("\n");
-                        }
-                    } catch (Exception e) {
-                        // Just log and continue, don't break the flow for a single sprint
-                        logger.warn("No se pudo obtener sprint para tarea: {}", tarea.getTareaID());
-                    }
-                }
-
-                messageBuilder.append("\n");
-            } catch (Exception e) {
-                logger.error("Error al formatear tarea: {}", tarea.getTareaID(), e);
-                // Continue with the next task rather than failing completely
-            }
-        }
-
-        return messageBuilder;
     }
 
     /**
@@ -1744,6 +1792,725 @@ public class TareaBotController {
             BotHelper.sendMessageToTelegram(chatId,
                     "❌ Error al mostrar todas las tareas. Volviendo al menú principal.", bot);
             mostrarSeleccionUsuarios(chatId, bot);
+        }
+    }
+
+    /**
+     * Muestra la selección de usuarios para ver KPIs
+     * 
+     * @param chatId ID del chat
+     * @param bot    Bot de Telegram
+     */
+    public void mostrarSeleccionUsuariosParaKPIs(Long chatId, TelegramLongPollingBot bot) {
+        try {
+            logger.info("Mostrando selección de usuarios para ver KPIs");
+            List<Usuario> usuarios = usuarioService.getAllUsuarios();
+
+            if (usuarios == null || usuarios.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId, "❌ No hay usuarios registrados en el sistema.", bot);
+                mostrarOpcionesKPIs(chatId, bot);
+                return;
+            }
+
+            // Crear teclado inline
+            InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+            List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+
+            // Agregar cada usuario como un botón
+            for (Usuario usuario : usuarios) {
+                List<InlineKeyboardButton> row = new ArrayList<>();
+                InlineKeyboardButton button = new InlineKeyboardButton();
+                button.setText(usuario.getNombre());
+                button.setCallbackData("VER_KPIS_USER_" + usuario.getUsuarioID());
+                row.add(button);
+                rowsInline.add(row);
+            }
+
+            // Botón para volver a las opciones de KPIs
+            List<InlineKeyboardButton> lastRow = new ArrayList<>();
+            InlineKeyboardButton backButton = new InlineKeyboardButton();
+            backButton.setText("🔙 Volver a Opciones");
+            backButton.setCallbackData("VER_KPIS");
+            lastRow.add(backButton);
+            rowsInline.add(lastRow);
+
+            markupInline.setKeyboard(rowsInline);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText("👤 *Selecciona un usuario para ver sus KPIs:*");
+            message.setParseMode("Markdown");
+            message.setReplyMarkup(markupInline);
+
+            bot.execute(message);
+        } catch (Exception e) {
+            logger.error("Error al mostrar selección de usuarios para KPIs", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al cargar la lista de usuarios.", bot);
+            mostrarOpcionesKPIs(chatId, bot);
+        }
+    }
+
+    /**
+     * Muestra los KPIs de un usuario específico
+     * 
+     * @param userId ID del usuario
+     * @param chatId ID del chat
+     * @param bot    Bot de Telegram
+     */
+    public void mostrarKPIsUsuario(Long userId, Long chatId, TelegramLongPollingBot bot) {
+        try {
+            logger.info("Mostrando KPIs del usuario ID: " + userId);
+
+            // Obtener datos del usuario
+            ResponseEntity<Usuario> usuarioResponse = usuarioService.getUsuarioById(userId);
+            if (usuarioResponse == null || !usuarioResponse.getStatusCode().is2xxSuccessful() ||
+                    usuarioResponse.getBody() == null) {
+                BotHelper.sendMessageToTelegram(chatId, "❌ No se pudo encontrar el usuario.", bot);
+                mostrarSeleccionUsuariosParaKPIs(chatId, bot);
+                return;
+            }
+
+            Usuario usuario = usuarioResponse.getBody();
+            List<Tarea> tareas = tareaService.getTareasByUsuario(userId);
+
+            if (tareas == null || tareas.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        "📊 *" + usuario.getNombre() + "* no tiene tareas asignadas, no es posible calcular KPIs.",
+                        bot);
+                mostrarSeleccionUsuariosParaKPIs(chatId, bot);
+                return;
+            }
+
+            // Calcular KPIs
+            int totalTareas = tareas.size();
+            int tareasCompletadas = 0;
+            int tareasPendientes = 0;
+            int tareasEnProceso = 0;
+            int horasEstimadasTotal = 0;
+            int horasRealesTotal = 0;
+            int tareasConHorasReales = 0;
+
+            for (Tarea tarea : tareas) {
+                if (tarea.getCompletado() == 1) {
+                    tareasCompletadas++;
+                    if (tarea.getHorasReales() != null) {
+                        horasRealesTotal += tarea.getHorasReales();
+                        tareasConHorasReales++;
+                    }
+                } else if (tarea.getEstadoID() != null && tarea.getEstadoID() == 2L) {
+                    tareasEnProceso++;
+                } else {
+                    tareasPendientes++;
+                }
+
+                if (tarea.getHorasEstimadas() != null) {
+                    horasEstimadasTotal += tarea.getHorasEstimadas();
+                }
+            }
+
+            // Calcular porcentajes
+            double porcentajeCompletitud = (totalTareas > 0) ? ((double) tareasCompletadas / totalTareas) * 100 : 0;
+
+            // La eficiencia es el porcentaje de completitud (tareas completadas / tareas
+            // totales)
+            double eficiencia = porcentajeCompletitud;
+
+            // Construir mensaje de KPIs
+            StringBuilder messageBuilder = new StringBuilder();
+            messageBuilder.append("📊 *KPIs de ").append(usuario.getNombre()).append("*\n\n");
+
+            // Estadísticas generales
+            messageBuilder.append("🔢 *Estadísticas Generales:*\n");
+            messageBuilder.append("📋 Total de tareas: ").append(totalTareas).append("\n");
+            messageBuilder.append("✅ Tareas completadas: ").append(tareasCompletadas).append(" (")
+                    .append(String.format("%.1f", porcentajeCompletitud)).append("%)\n");
+            messageBuilder.append("🔄 Tareas en proceso: ").append(tareasEnProceso).append("\n");
+            messageBuilder.append("⏳ Tareas pendientes: ").append(tareasPendientes).append("\n\n");
+
+            // Estadísticas de tiempo
+            messageBuilder.append("⏱️ *Estadísticas de Tiempo:*\n");
+            messageBuilder.append("⌛ Horas estimadas totales: ").append(horasEstimadasTotal).append("\n");
+
+            if (tareasConHorasReales > 0) {
+                messageBuilder.append("⏰ Horas reales totales: ").append(horasRealesTotal).append("\n");
+
+                // Solo mostrar eficiencia si hay datos suficientes
+                if (eficiencia > 0) {
+                    String emojiEficiencia = (eficiencia >= 80) ? "🟢" : (eficiencia >= 50) ? "🟡" : "🔴";
+                    messageBuilder.append(emojiEficiencia).append(" Eficiencia: ")
+                            .append(String.format("%.1f", eficiencia)).append("% (")
+                            .append(tareasCompletadas).append("/").append(totalTareas).append(")\n");
+
+                    if (eficiencia >= 80) {
+                        messageBuilder.append(
+                                "🌟 *¡Excelente eficiencia!* Alto porcentaje de tareas completadas.\n");
+                    } else if (eficiencia >= 50) {
+                        messageBuilder.append("👍 *Buena eficiencia.* Buen progreso en las tareas asignadas.\n");
+                    } else {
+                        messageBuilder
+                                .append("⚠️ *Eficiencia por mejorar.* Bajo porcentaje de tareas completadas.\n");
+                    }
+                }
+            } else {
+                messageBuilder.append("⚠️ No hay tareas completadas con horas reales registradas.\n");
+            }
+
+            // Añadir una nota explicativa
+            messageBuilder.append(
+                    "\n💡 *Nota:* La eficiencia se calcula como el porcentaje de tareas completadas sobre el total asignado.\n");
+
+            // Botones para opciones adicionales
+            InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+            List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+
+            // Botón para volver a la selección de usuarios
+            List<InlineKeyboardButton> row1 = new ArrayList<>();
+            InlineKeyboardButton backButton = new InlineKeyboardButton();
+            backButton.setText("👤 Volver a Usuarios");
+            backButton.setCallbackData("VER_KPIS_USUARIOS");
+            row1.add(backButton);
+            rowsInline.add(row1);
+
+            // Botón para volver a opciones de KPIs
+            List<InlineKeyboardButton> row2 = new ArrayList<>();
+            InlineKeyboardButton optionsButton = new InlineKeyboardButton();
+            optionsButton.setText("📊 Opciones KPI");
+            optionsButton.setCallbackData("VER_KPIS");
+            row2.add(optionsButton);
+            rowsInline.add(row2);
+
+            // Botón para el menú principal
+            List<InlineKeyboardButton> row3 = new ArrayList<>();
+            InlineKeyboardButton menuButton = new InlineKeyboardButton();
+            menuButton.setText("🔙 Menú Principal");
+            menuButton.setCallbackData("MENU_PRINCIPAL");
+            row3.add(menuButton);
+            rowsInline.add(row3);
+
+            markupInline.setKeyboard(rowsInline);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText(messageBuilder.toString());
+            message.setParseMode("Markdown");
+            message.setReplyMarkup(markupInline);
+
+            bot.execute(message);
+
+        } catch (Exception e) {
+            logger.error("Error al mostrar KPIs del usuario", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al obtener los KPIs del usuario.", bot);
+            mostrarSeleccionUsuariosParaKPIs(chatId, bot);
+        }
+    }
+
+    /**
+     * Muestra los KPIs de un sprint específico
+     * 
+     * @param sprintId ID del sprint
+     * @param chatId   ID del chat
+     * @param bot      Bot de Telegram
+     */
+    public void mostrarKPIsSprint(Long sprintId, Long chatId, TelegramLongPollingBot bot) {
+        try {
+            logger.info("Mostrando KPIs del sprint ID: " + sprintId);
+
+            // Obtener datos del sprint
+            Optional<Sprint> sprintOpt = sprintService.getSprintById(sprintId);
+            if (sprintOpt.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId, "❌ No se pudo encontrar el sprint.", bot);
+                mostrarSeleccionSprintsParaKPIs(chatId, bot);
+                return;
+            }
+
+            Sprint sprint = sprintOpt.get();
+
+            // Obtener todas las tareas del sprint
+            List<Tarea> tareasSprint = tareaService.getTareasBySprint(sprintId);
+
+            if (tareasSprint == null || tareasSprint.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        "📊 El sprint *" + sprint.getNombreSprint()
+                                + "* no tiene tareas asignadas, no es posible calcular KPIs.",
+                        bot);
+                mostrarSeleccionSprintsParaKPIs(chatId, bot);
+                return;
+            }
+
+            // Calcular KPIs
+            int totalTareas = tareasSprint.size();
+            int tareasCompletadas = 0;
+            int tareasPendientes = 0;
+            int tareasEnProceso = 0;
+            int horasEstimadasTotal = 0;
+            int horasRealesTotal = 0;
+            int tareasConHorasReales = 0;
+
+            // Map para agrupar tareas por usuario
+            Map<Long, List<Tarea>> tareasPorUsuario = new HashMap<>();
+
+            for (Tarea tarea : tareasSprint) {
+                if (tarea.getCompletado() == 1) {
+                    tareasCompletadas++;
+                    if (tarea.getHorasReales() != null) {
+                        horasRealesTotal += tarea.getHorasReales();
+                        tareasConHorasReales++;
+                    }
+                } else if (tarea.getEstadoID() != null && tarea.getEstadoID() == 2L) {
+                    tareasEnProceso++;
+                } else {
+                    tareasPendientes++;
+                }
+
+                if (tarea.getHorasEstimadas() != null) {
+                    horasEstimadasTotal += tarea.getHorasEstimadas();
+                }
+
+                // Agrupar tareas por usuario
+                if (tarea.getUsuarioID() != null) {
+                    tareasPorUsuario.computeIfAbsent(tarea.getUsuarioID(), k -> new ArrayList<>()).add(tarea);
+                }
+            }
+
+            // Calcular porcentajes
+            double porcentajeCompletitud = (totalTareas > 0) ? ((double) tareasCompletadas / totalTareas) * 100 : 0;
+
+            // La eficiencia es el porcentaje de completitud (tareas completadas / tareas
+            // totales)
+            double eficiencia = porcentajeCompletitud;
+
+            // Construir mensaje de KPIs
+            StringBuilder messageBuilder = new StringBuilder();
+            messageBuilder.append("📊 *KPIs del Sprint: ").append(sprint.getNombreSprint()).append("*\n\n");
+
+            // Fechas del sprint
+            if (sprint.getStartDate() != null) {
+                String fechaInicio = new java.text.SimpleDateFormat("yyyy-MM-dd").format(sprint.getStartDate());
+                messageBuilder.append("🗓️ Fecha inicio: ").append(fechaInicio).append("\n");
+            }
+
+            if (sprint.getEndDate() != null) {
+                String fechaFin = new java.text.SimpleDateFormat("yyyy-MM-dd").format(sprint.getEndDate());
+                messageBuilder.append("🗓️ Fecha fin: ").append(fechaFin).append("\n\n");
+            }
+
+            // Estadísticas generales
+            messageBuilder.append("🔢 *Estadísticas Generales:*\n");
+            messageBuilder.append("📋 Total de tareas: ").append(totalTareas).append("\n");
+            messageBuilder.append("✅ Tareas completadas: ").append(tareasCompletadas).append(" (")
+                    .append(String.format("%.1f", porcentajeCompletitud)).append("%)\n");
+            messageBuilder.append("🔄 Tareas en proceso: ").append(tareasEnProceso).append("\n");
+            messageBuilder.append("⏳ Tareas pendientes: ").append(tareasPendientes).append("\n\n");
+
+            // Estadísticas de tiempo
+            messageBuilder.append("⏱️ *Estadísticas de Tiempo:*\n");
+            messageBuilder.append("⌛ Horas estimadas totales: ").append(horasEstimadasTotal).append("\n");
+
+            if (tareasConHorasReales > 0) {
+                messageBuilder.append("⏰ Horas reales totales: ").append(horasRealesTotal).append("\n");
+
+                // Solo mostrar eficiencia si hay datos suficientes
+                if (eficiencia > 0) {
+                    String emojiEficiencia = (eficiencia >= 80) ? "🟢" : (eficiencia >= 50) ? "🟡" : "🔴";
+                    messageBuilder.append(emojiEficiencia).append(" Eficiencia global: ")
+                            .append(String.format("%.1f", eficiencia)).append("% (")
+                            .append(tareasCompletadas).append("/").append(totalTareas).append(")\n\n");
+                }
+            } else {
+                messageBuilder.append("⚠️ No hay tareas completadas con horas reales registradas.\n\n");
+            }
+
+            // KPIs por usuario
+            if (!tareasPorUsuario.isEmpty()) {
+                messageBuilder.append("👥 *Participación por Usuario:*\n");
+
+                for (Map.Entry<Long, List<Tarea>> entry : tareasPorUsuario.entrySet()) {
+                    Long userId = entry.getKey();
+                    List<Tarea> tareasUsuario = entry.getValue();
+
+                    // Obtener información del usuario
+                    String nombreUsuario = "Usuario ID: " + userId;
+                    try {
+                        ResponseEntity<Usuario> usuarioResponse = usuarioService.getUsuarioById(userId);
+                        if (usuarioResponse != null && usuarioResponse.getStatusCode().is2xxSuccessful()
+                                && usuarioResponse.getBody() != null) {
+                            nombreUsuario = usuarioResponse.getBody().getNombre();
+                        }
+                    } catch (Exception e) {
+                        logger.warn("No se pudo obtener información del usuario ID: " + userId);
+                    }
+
+                    int tareasUsuarioCompletadas = (int) tareasUsuario.stream()
+                            .filter(t -> t.getCompletado() == 1)
+                            .count();
+
+                    double porcentajeContribucion = ((double) tareasUsuario.size() / totalTareas) * 100;
+                    double porcentajeCompletitudUsuario = (tareasUsuario.size() > 0)
+                            ? ((double) tareasUsuarioCompletadas / tareasUsuario.size()) * 100
+                            : 0;
+
+                    messageBuilder.append("👤 *").append(nombreUsuario).append(":* ");
+                    messageBuilder.append(tareasUsuario.size()).append(" tareas (")
+                            .append(String.format("%.1f", porcentajeContribucion)).append("% del total)\n");
+                    messageBuilder.append("✅ Completadas: ").append(tareasUsuarioCompletadas)
+                            .append(" (").append(String.format("%.1f", porcentajeCompletitudUsuario)).append("%)\n\n");
+                }
+            }
+
+            // Añadir una nota explicativa
+            messageBuilder
+                    .append("💡 *Nota:* La eficiencia se calcula como el porcentaje de tareas completadas sobre el total asignado.");
+
+            // Botones para opciones adicionales
+            InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+            List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+
+            // Botón para volver a la selección de sprints
+            List<InlineKeyboardButton> row1 = new ArrayList<>();
+            InlineKeyboardButton backButton = new InlineKeyboardButton();
+            backButton.setText("🏃 Volver a Sprints");
+            backButton.setCallbackData("VER_KPIS_SPRINTS");
+            row1.add(backButton);
+            rowsInline.add(row1);
+
+            // Botón para volver a opciones de KPIs
+            List<InlineKeyboardButton> row2 = new ArrayList<>();
+            InlineKeyboardButton optionsButton = new InlineKeyboardButton();
+            optionsButton.setText("📊 Opciones KPI");
+            optionsButton.setCallbackData("VER_KPIS");
+            row2.add(optionsButton);
+            rowsInline.add(row2);
+
+            // Botón para el menú principal
+            List<InlineKeyboardButton> row3 = new ArrayList<>();
+            InlineKeyboardButton menuButton = new InlineKeyboardButton();
+            menuButton.setText("🔙 Menú Principal");
+            menuButton.setCallbackData("MENU_PRINCIPAL");
+            row3.add(menuButton);
+            rowsInline.add(row3);
+
+            markupInline.setKeyboard(rowsInline);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText(messageBuilder.toString());
+            message.setParseMode("Markdown");
+            message.setReplyMarkup(markupInline);
+
+            bot.execute(message);
+
+        } catch (Exception e) {
+            logger.error("Error al mostrar KPIs del sprint", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al obtener los KPIs del sprint.", bot);
+            mostrarSeleccionSprintsParaKPIs(chatId, bot);
+        }
+    }
+
+    /**
+     * Muestra la selección de sprints para ver KPIs
+     * 
+     * @param chatId ID del chat
+     * @param bot    Bot de Telegram
+     */
+    public void mostrarSeleccionSprintsParaKPIs(Long chatId, TelegramLongPollingBot bot) {
+        try {
+            logger.info("Mostrando selección de sprints para ver KPIs");
+            List<Sprint> sprints = sprintService.getAllSprints();
+
+            if (sprints == null || sprints.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId, "❌ No hay sprints registrados en el sistema.", bot);
+                mostrarOpcionesKPIs(chatId, bot);
+                return;
+            }
+
+            // Crear teclado inline
+            InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+            List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+
+            // Agregar cada sprint como un botón
+            for (Sprint sprint : sprints) {
+                List<InlineKeyboardButton> row = new ArrayList<>();
+                InlineKeyboardButton button = new InlineKeyboardButton();
+                button.setText(sprint.getNombreSprint());
+                button.setCallbackData("VER_KPIS_SPRINT_" + sprint.getSprintID());
+                row.add(button);
+                rowsInline.add(row);
+            }
+
+            // Botón para volver a las opciones de KPIs
+            List<InlineKeyboardButton> lastRow = new ArrayList<>();
+            InlineKeyboardButton backButton = new InlineKeyboardButton();
+            backButton.setText("🔙 Volver a Opciones");
+            backButton.setCallbackData("VER_KPIS");
+            lastRow.add(backButton);
+            rowsInline.add(lastRow);
+
+            markupInline.setKeyboard(rowsInline);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText("🏃 *Selecciona un sprint para ver sus KPIs:*");
+            message.setParseMode("Markdown");
+            message.setReplyMarkup(markupInline);
+
+            bot.execute(message);
+        } catch (Exception e) {
+            logger.error("Error al mostrar selección de sprints para KPIs", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al cargar la lista de sprints.", bot);
+            mostrarOpcionesKPIs(chatId, bot);
+        }
+    }
+
+    /**
+     * Muestra el menú inicial de opciones para los KPIs
+     * 
+     * @param chatId ID del chat
+     * @param bot    Bot de Telegram
+     */
+    private void mostrarOpcionesKPIs(Long chatId, TelegramLongPollingBot bot) {
+        try {
+            logger.info("Mostrando opciones de KPIs");
+
+            // Crear teclado inline
+            InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+            List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+
+            // Opción para ver KPIs por Usuario
+            List<InlineKeyboardButton> row1 = new ArrayList<>();
+            InlineKeyboardButton userButton = new InlineKeyboardButton();
+            userButton.setText("👤 Por Usuario");
+            userButton.setCallbackData("VER_KPIS_USUARIOS");
+            row1.add(userButton);
+            rowsInline.add(row1);
+
+            // Opción para ver KPIs por Sprint
+            List<InlineKeyboardButton> row2 = new ArrayList<>();
+            InlineKeyboardButton sprintButton = new InlineKeyboardButton();
+            sprintButton.setText("🏃 Por Sprint");
+            sprintButton.setCallbackData("VER_KPIS_SPRINTS");
+            row2.add(sprintButton);
+            rowsInline.add(row2);
+
+            // Botón para volver al menú principal
+            List<InlineKeyboardButton> row3 = new ArrayList<>();
+            InlineKeyboardButton menuButton = new InlineKeyboardButton();
+            menuButton.setText("🔙 Volver al Menú");
+            menuButton.setCallbackData("MENU_PRINCIPAL");
+            row3.add(menuButton);
+            rowsInline.add(row3);
+
+            markupInline.setKeyboard(rowsInline);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText("📊 *Selecciona el tipo de KPIs que deseas ver:*");
+            message.setParseMode("Markdown");
+            message.setReplyMarkup(markupInline);
+
+            bot.execute(message);
+        } catch (Exception e) {
+            logger.error("Error al mostrar opciones de KPIs", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al cargar opciones de KPI.", bot);
+            MenuBotHelper.showMainMenu(chatId, bot);
+        }
+    }
+
+    /**
+     * Muestra el menú para cambiar el estado de las tareas del usuario
+     * 
+     * @param chatId     ID del chat
+     * @param telegramId ID de Telegram del usuario
+     * @param bot        Bot de Telegram
+     */
+    public void showTaskStateChangeMenu(Long chatId, Long telegramId, TelegramLongPollingBot bot) {
+        try {
+            Optional<Usuario> usuarioOpt = usuarioService.getUsuarioByTelegramId(telegramId);
+            if (usuarioOpt.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId, "❌ No se encontró tu cuenta.", bot);
+                return;
+            }
+
+            Usuario usuario = usuarioOpt.get();
+            List<Tarea> tareasPendientes = tareaService.getTareasByUsuario(usuario.getUsuarioID())
+                    .stream()
+                    .filter(t -> t.getCompletado() == 0)
+                    .collect(Collectors.toList());
+
+            if (tareasPendientes.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId, "No tienes tareas pendientes para cambiar estado.", bot);
+                MenuBotHelper.showMainMenu(chatId, bot);
+                return;
+            }
+
+            // Crear teclado inline
+            InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+            List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+
+            // Agregar cada tarea como un botón
+            for (Tarea tarea : tareasPendientes) {
+                List<InlineKeyboardButton> row = new ArrayList<>();
+                InlineKeyboardButton button = new InlineKeyboardButton();
+                button.setText("🔄 " + tarea.getTareaNombre());
+                button.setCallbackData("CAMBIAR_ESTADO_TAREA_" + tarea.getTareaID());
+                row.add(button);
+                rowsInline.add(row);
+            }
+
+            // Botón para volver al menú principal
+            List<InlineKeyboardButton> lastRow = new ArrayList<>();
+            InlineKeyboardButton menuButton = new InlineKeyboardButton();
+            menuButton.setText(BotLabels.SHOW_MAIN_SCREEN.getLabel());
+            menuButton.setCallbackData("MENU_PRINCIPAL");
+            lastRow.add(menuButton);
+            rowsInline.add(lastRow);
+
+            markupInline.setKeyboard(rowsInline);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText("Selecciona la tarea cuyo estado deseas cambiar:");
+            message.setReplyMarkup(markupInline);
+
+            bot.execute(message);
+        } catch (Exception e) {
+            logger.error("Error al mostrar menú de cambiar estado de tareas", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al cargar tus tareas.", bot);
+            MenuBotHelper.showMainMenu(chatId, bot);
+        }
+    }
+
+    /**
+     * Muestra las opciones de estados disponibles para una tarea
+     * 
+     * @param tareaId ID de la tarea
+     * @param chatId  ID del chat
+     * @param bot     Bot de Telegram
+     */
+    public void showTaskStateOptions(Long tareaId, Long chatId, TelegramLongPollingBot bot) {
+        try {
+            ResponseEntity<Tarea> tareaResponse = tareaService.getTareaById(tareaId);
+            if (tareaResponse == null || !tareaResponse.getStatusCode().is2xxSuccessful()
+                    || tareaResponse.getBody() == null) {
+                BotHelper.sendMessageToTelegram(chatId, "❌ No se encontró la tarea.", bot);
+                MenuBotHelper.showMainMenu(chatId, bot);
+                return;
+            }
+
+            Tarea tarea = tareaResponse.getBody();
+
+            // Crear teclado inline
+            InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+            List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+
+            // Opciones de estado
+            String[] estados = { "PENDIENTE", "EN_PROCESO", "COMPLETADA" };
+            for (String estado : estados) {
+                // No mostrar el estado actual como opción
+                if ((estado.equals("PENDIENTE") && tarea.getEstadoID() == 1L) ||
+                        (estado.equals("EN_PROCESO") && tarea.getEstadoID() == 2L) ||
+                        (estado.equals("COMPLETADA") && tarea.getEstadoID() == 3L)) {
+                    continue;
+                }
+
+                List<InlineKeyboardButton> row = new ArrayList<>();
+                InlineKeyboardButton button = new InlineKeyboardButton();
+                button.setText(estado.replace("_", " "));
+                button.setCallbackData("ACTUALIZAR_ESTADO_" + estado + "_TAREA_" + tareaId);
+                row.add(button);
+                rowsInline.add(row);
+            }
+
+            // Botón para volver
+            List<InlineKeyboardButton> lastRow = new ArrayList<>();
+            InlineKeyboardButton backButton = new InlineKeyboardButton();
+            backButton.setText("⬅️ Volver");
+            backButton.setCallbackData("MIS_TAREAS");
+            lastRow.add(backButton);
+            rowsInline.add(lastRow);
+
+            markupInline.setKeyboard(rowsInline);
+
+            SendMessage message = new SendMessage();
+            message.setChatId(chatId);
+            message.setText("Tarea: *" + tarea.getTareaNombre() + "*\n" +
+                    "Estado actual: *" + getEstadoNombre(tarea.getEstadoID()) + "*\n\n" +
+                    "Selecciona el nuevo estado:");
+            message.setParseMode("Markdown");
+            message.setReplyMarkup(markupInline);
+
+            bot.execute(message);
+        } catch (Exception e) {
+            logger.error("Error al mostrar opciones de estado", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al cargar opciones de estado.", bot);
+            MenuBotHelper.showMainMenu(chatId, bot);
+        }
+    }
+
+    /**
+     * Actualiza el estado de una tarea
+     * 
+     * @param tareaId       ID de la tarea
+     * @param nuevoEstadoId ID del nuevo estado
+     * @param chatId        ID del chat
+     * @param telegramId    ID de Telegram del usuario
+     * @param bot           Bot de Telegram
+     */
+    public void updateTaskState(Long tareaId, Long nuevoEstadoId, Long chatId, Long telegramId,
+            TelegramLongPollingBot bot) {
+        try {
+            ResponseEntity<Tarea> tareaResponse = tareaService.getTareaById(tareaId);
+            if (tareaResponse == null || !tareaResponse.getStatusCode().is2xxSuccessful()
+                    || tareaResponse.getBody() == null) {
+                BotHelper.sendMessageToTelegram(chatId, "❌ No se encontró la tarea.", bot);
+                MenuBotHelper.showMainMenu(chatId, bot);
+                return;
+            }
+
+            Tarea tarea = tareaResponse.getBody();
+
+            // Si el nuevo estado es "COMPLETADA", también actualizamos el campo completado
+            if (nuevoEstadoId == 3L) {
+                tarea.setCompletado(1);
+                // Para tareas completadas, solicitamos las horas reales
+                BotHelper.sendMessageToTelegram(chatId,
+                        "⏱️ Por favor, ingresa las horas reales que tomó completar la tarea:", bot);
+                completionTasks.put(chatId, tarea);
+                awaitingHoursReal.put(chatId, true);
+                return;
+            } else {
+                // Actualizamos solo el estado
+                tarea.setEstadoID(nuevoEstadoId);
+                tareaService.updateTarea(tarea.getTareaID(), tarea);
+
+                BotHelper.sendMessageToTelegram(chatId,
+                        "✅ Estado actualizado exitosamente a *" + getEstadoNombre(nuevoEstadoId) + "*", bot);
+
+                // Volver a mostrar las tareas del usuario
+                showUserTasks(chatId, telegramId, bot);
+            }
+        } catch (Exception e) {
+            logger.error("Error al actualizar estado de tarea", e);
+            BotHelper.sendMessageToTelegram(chatId, "❌ Error al actualizar estado.", bot);
+            MenuBotHelper.showMainMenu(chatId, bot);
+        }
+    }
+
+    /**
+     * Obtiene el nombre del estado a partir de su ID
+     * 
+     * @param estadoId ID del estado
+     * @return Nombre del estado
+     */
+    private String getEstadoNombre(Long estadoId) {
+        switch (estadoId.intValue()) {
+            case 1:
+                return "PENDIENTE";
+            case 2:
+                return "EN PROCESO";
+            case 3:
+                return "COMPLETADA";
+            default:
+                return "DESCONOCIDO";
         }
     }
 }

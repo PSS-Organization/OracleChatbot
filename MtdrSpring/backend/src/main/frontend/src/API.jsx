@@ -16,22 +16,137 @@
 // Copy from the endpoint from the API Gateway Deployment
 // Example: const API_LIST = 'https://di2eyonlz5s7kmuektcddaw5zq.apigateway.<region>.oci.customer-oci.com/todolist';
 // const API_LIST = 'https://di2eyonlz5s7kmuektcddaw5zq.apigateway.eu-frankfurt-1.oci.customer-oci.com/todolist';
+import axiosInstance from "./utils/axiosConfig";
 import { getBackendUrl } from "./utils/getBackendUrl";
 
-export const API_LIST = '/todolist';
-export const API_SIGNUP = `${await getBackendUrl()}/usuarios/signup`; // Ahora usa la URL correcta
-export const API_USERS = '/usuarios/all';
+// API Endpoints
+export const API_LIST = "/todolist";
+export const API_LOGIN = "/usuarios/login";
+export const API_SIGNUP = "/usuarios/signup";
+export const API_TAREAS = "/tareas";
+export const API_SPRINTS = "/sprints";
 
-export const API_TAREAS = `${await getBackendUrl()}/tareas`;  
-export const API_SPRINTS = `${await getBackendUrl()}/sprints`;
+// Auth functions
+export const login = async (credentials) => {
+  const backendUrl = await getBackendUrl();
+  try {
+    const response = await axiosInstance.post(
+      `${backendUrl}${API_LOGIN}`,
+      credentials
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || "Login failed");
+  }
+};
 
-// import { API_LIST, API_USERS } from './API.jsx';
+export const signup = async (userData) => {
+  const backendUrl = await getBackendUrl();
+  try {
+    const response = await axiosInstance.post(
+      `${backendUrl}${API_SIGNUP}`,
+      userData
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || "Signup failed");
+  }
+};
 
-// // Usar API_LIST y API_USERS en tu código
-// fetch(API_LIST)
-//     .then(response => response.json())
-//     .then(data => console.log(data));
+// Tasks functions
+export const getTareas = async () => {
+  const backendUrl = await getBackendUrl();
+  try {
+    const response = await axiosInstance.get(`${backendUrl}${API_TAREAS}`);
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to fetch tasks");
+  }
+};
 
-// fetch(API_USERS)
-//     .then(response => response.json())
-//     .then(data => console.log(data));
+export const createTarea = async (tarea) => {
+  const backendUrl = await getBackendUrl();
+  try {
+    const response = await axiosInstance.post(
+      `${backendUrl}${API_TAREAS}`,
+      tarea
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to create task");
+  }
+};
+
+export const updateTarea = async (id, tarea) => {
+  const backendUrl = await getBackendUrl();
+  try {
+    const response = await axiosInstance.put(
+      `${backendUrl}${API_TAREAS}/${id}`,
+      tarea
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to update task");
+  }
+};
+
+export const deleteTarea = async (id) => {
+  const backendUrl = await getBackendUrl();
+  try {
+    const response = await axiosInstance.delete(
+      `${backendUrl}${API_TAREAS}/${id}`
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to delete task");
+  }
+};
+
+// Sprints functions
+export const getSprints = async () => {
+  const backendUrl = await getBackendUrl();
+  try {
+    const response = await axiosInstance.get(`${backendUrl}${API_SPRINTS}`);
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to fetch sprints");
+  }
+};
+
+export const createSprint = async (sprint) => {
+  const backendUrl = await getBackendUrl();
+  try {
+    const response = await axiosInstance.post(
+      `${backendUrl}${API_SPRINTS}`,
+      sprint
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to create sprint");
+  }
+};
+
+export const updateSprint = async (id, sprint) => {
+  const backendUrl = await getBackendUrl();
+  try {
+    const response = await axiosInstance.put(
+      `${backendUrl}${API_SPRINTS}/${id}`,
+      sprint
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to update sprint");
+  }
+};
+
+export const deleteSprint = async (id) => {
+  const backendUrl = await getBackendUrl();
+  try {
+    const response = await axiosInstance.delete(
+      `${backendUrl}${API_SPRINTS}/${id}`
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to delete sprint");
+  }
+};

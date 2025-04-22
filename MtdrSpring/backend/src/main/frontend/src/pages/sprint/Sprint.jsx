@@ -3,7 +3,7 @@ import Header from "../../components/Header/Header";
 import Sidebar from "../../components/SideBar/SideBar";
 import AddSprint from "../../components/AddSprint/AddSprint";
 import SprintCard from "../../components/SprintCard/SprintCard";
-import { API_SPRINTS } from "../../API";
+import { getSprints } from "../../API";
 
 const Sprint = () => {
   const [sprints, setSprints] = useState([]);
@@ -14,11 +14,7 @@ const Sprint = () => {
   const fetchSprints = async () => {
     setLoading(true);
     try {
-      const response = await fetch(API_SPRINTS);
-      if (!response.ok) {
-        throw new Error("Error fetching sprints");
-      }
-      const data = await response.json();
+      const data = await getSprints();
       setSprints(data);
       setError("");
     } catch (err) {

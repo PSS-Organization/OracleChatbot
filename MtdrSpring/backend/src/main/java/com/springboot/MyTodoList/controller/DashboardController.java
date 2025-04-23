@@ -32,19 +32,6 @@ public class DashboardController {
             // Map to store aggregated data for each user
             List<Map<String, Object>> userStats = new ArrayList<>();
 
-            // Calculate tasks assigned per user
-            Map<Long, Integer> tasksAssignedPerUser = allTasks.stream()
-                    .collect(Collectors.groupingBy(
-                            Tarea::getUsuarioID,
-                            Collectors.summingInt(task -> 1)
-                    ));
-
-            // Calculate global average of tasks assigned
-            double globalAverage = tasksAssignedPerUser.values().stream()
-                    .mapToInt(Integer::intValue)
-                    .average()
-                    .orElse(0);
-
             for (Usuario user : allUsers) {
                 // Filter tasks for the current user
                 List<Tarea> userTasks = allTasks.stream()
@@ -65,10 +52,6 @@ public class DashboardController {
                         .mapToInt(task -> task.getHorasReales() != null ? task.getHorasReales() : 0)
                         .sum();
 
-                // Calculate task deviation
-                int tasksAssigned = tasksAssignedPerUser.getOrDefault(user.getUsuarioID(), 0);
-                double taskDeviation = Math.round((tasksAssigned - globalAverage) * 100.0) / 100.0;
-
                 // Add user stats to the list
                 Map<String, Object> userStat = new HashMap<>();
                 userStat.put("userName", user.getNombre());
@@ -77,8 +60,6 @@ public class DashboardController {
                 userStat.put("completedTasks", completedTasks);
                 userStat.put("percentageCompleted", percentageCompleted);
                 userStat.put("totalRealHours", totalRealHours);
-                userStat.put("tasksAssigned", tasksAssigned);
-                userStat.put("taskDeviation", taskDeviation);
 
                 userStats.add(userStat);
             }

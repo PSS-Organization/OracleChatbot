@@ -20,7 +20,7 @@ function App() {
         path="/home"
         element={
           <ProtectedRoute>
-            <TodoList />
+            <Home />
           </ProtectedRoute>
         }
       />
@@ -53,6 +53,14 @@ function App() {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/team"
+        element={
+          <ProtectedRoute>
+            <Team />
           </ProtectedRoute>
         }
       />

@@ -1,36 +1,32 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/SideBar/SideBar";
 import Header from "../../components/Header/Header";
-import { Bar, Pie } from "react-chartjs-2";
+import { getUserKPIs, getTareas } from "../../API"; // Import getTareas
 
 const Home = () => {
     const [userInfo, setUserInfo] = useState(null);
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [daysLeft, setDaysLeft] = useState(null); // Days left in the sprint
 
     useEffect(() => {
         const fetchUserInfo = async () => {
             setLoading(true);
             try {
-                const userId = localStorage.getItem("userId"); // Get the logged-in user's ID
+                const userId = localStorage.getItem("userId");
                 if (!userId) throw new Error("User not logged in");
 
-                // Fetch user-specific KPIs from /home/user-kpis
-                const response = await fetch(`/home/user-kpis`, {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "userId": userId, // Pass the userId in the request header
-                    },
-                });
-                if (!response.ok) throw new Error("Error fetching user KPIs");
-                const data = await response.json();
-
-                // Set user info and tasks based on the response
-                setUserInfo({ nombre: data.userName }); // Assuming userName is part of the response
-                setTasks(data.tasks || []); // If tasks are included in the response
+                // Fetch user KPIs
+                const data = await getUserKPIs(userId);
+                setUserInfo({ nombre: data.userName });
                 setError("");
+
+                // Fetch tasks
+                const allTasks = await getTareas();
+                const userTasks = allTasks.filter((task) => task.usuarioID === parseInt(userId));
+                setTasks(userTasks);
+
             } catch (err) {
                 setError(err.message);
             } finally {
@@ -49,22 +45,17 @@ const Home = () => {
     const totalEstimatedHours = tasks.reduce((sum, task) => sum + (task.horasEstimadas || 0), 0);
     const totalRealHours = tasks.reduce((sum, task) => sum + (task.horasReales || 0), 0);
 
+    // Filter "To Do" tasks
+    const toDoTasks = tasks.filter((task) => task.estadoID === 1); // Assuming "To Do" status has estadoID = 1
+
     return (
         <div className="flex min-h-screen bg-gray-100">
             <Sidebar />
             <div className="flex-1 flex flex-col">
-            <Header
-                headerTitle="Home"
-                onFilterChange={(filters) => {
-                    const selectedSprint = filters.sprints[0] || "all";
-                    if (selectedSprint === "all") {
-                    setTasks(tasks); // Show all tasks
-                    } else {
-                    setTasks(tasks.filter((task) => task.sprint === selectedSprint));
-                    }
-                }}
-                showUserFilter={false}
-            />
+                <Header
+                    headerTitle={`${userInfo?.nombre || "User"} Home`}
+                    showUserFilter={false}
+                />
                 <div className="p-4 lg:p-6 mt-16 lg:mt-0 overflow-auto">
                     {loading ? (
                         <p>Loading user information...</p>
@@ -72,92 +63,111 @@ const Home = () => {
                         <p className="text-red-500">{error}</p>
                     ) : (
                         <>
-                            {/* User Info Section */}
-                            <div className="bg-white p-6 rounded-lg shadow-md border-2 border-gray-200 mb-6">
-                                <h2 className="text-xl font-bold mb-4 border-b pb-2">Welcome, {userInfo.nombre}</h2>
-                            </div>
+                            {/* Sprint Overview */}
+                            <h2 className="text-xl font-bold mb-4 border-b pb-2">Sprint Overview</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                {/* Tasks Completed vs Remaining */}
+                                <div className="bg-blue-100 p-4 rounded-lg shadow-md flex flex-col items-center">
+                                <div className="text-blue-600 text-4xl mb-2">
+                                    <i className="fas fa-tasks"></i> {/* Task Icon */}
+                                </div>
+                                <p className="text-2xl font-bold">{completedTasks} / {totalTasks}</p>
+                                <p className="text-sm text-gray-600 mb-2">Tasks Completed</p>
+                                {/* Progress Bar */}
+                                <div className="w-full bg-blue-200 rounded-full h-4">
+                                    <div
+                                    className="bg-blue-600 h-4 rounded-full"
+                                    style={{ width: `${percentageCompleted}%` }}
+                                    ></div>
+                                </div>
+                                </div>
 
-                            {/* Sprint Card */}
-                            <div className="bg-white p-6 rounded-lg shadow-md border-2 border-gray-200 mb-6">
-                                <h2 className="text-xl font-bold mb-4 border-b pb-2">Sprint Overview</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="bg-blue-100 p-4 rounded-lg shadow-md">
-                                        <h3 className="text-lg font-bold mb-2">Completed vs Uncompleted Tasks</h3>
-                                        <Pie
-                                            data={{
-                                                labels: ["Completed", "Uncompleted"],
-                                                datasets: [
-                                                    {
-                                                        data: [
-                                                            completedTasks,
-                                                            totalTasks - completedTasks,
-                                                        ],
-                                                        backgroundColor: ["#4CAF50", "#FF6384"],
-                                                    },
-                                                ],
-                                            }}
-                                        />
+                                {/* Real Hours Accomplished */}
+                                <div className="bg-green-100 p-4 rounded-lg shadow-md flex flex-col items-center">
+                                    <div className="text-green-600 text-4xl mb-2">
+                                        <i className="fas fa-clock"></i> {/* Time Icon */}
                                     </div>
-                                    <div className="bg-green-100 p-4 rounded-lg shadow-md">
-                                        <h3 className="text-lg font-bold mb-2">Hours Done for Sprint</h3>
-                                        <Bar
-                                            data={{
-                                                labels: ["Real Hours", "Estimated Hours"],
-                                                datasets: [
-                                                    {
-                                                        label: "Hours",
-                                                        data: [totalRealHours, totalEstimatedHours],
-                                                        backgroundColor: ["#36A2EB", "#FFCE56"],
-                                                    },
-                                                ],
-                                            }}
-                                            options={{
-                                                scales: {
-                                                    y: {
-                                                        beginAtZero: true,
-                                                    },
-                                                },
-                                            }}
-                                        />
+                                    <p className="text-2xl font-bold">{totalRealHours}</p>
+                                    <p className="text-sm text-gray-600">Hours Done</p>
+                                </div>
+
+                                {/* Key Performance Indicator */}
+                                <div className="bg-purple-100 p-4 rounded-lg shadow-md flex flex-col items-center">
+                                    <div className="text-purple-600 text-4xl mb-2">
+                                        <i className="fas fa-chart-line"></i> {/* KPI Icon */}
                                     </div>
+                                    <p className="text-2xl font-bold">{percentageCompleted}%</p>
+                                    <p className="text-sm text-gray-600">Completion Rate</p>
+                                </div>
+
+                                {/* Days Left in Sprint */}
+                                <div className="bg-red-100 p-4 rounded-lg shadow-md flex flex-col items-center">
+                                    <div className="text-red-600 text-4xl mb-2">
+                                        <i className="fas fa-calendar-alt"></i> {/* Calendar Icon */}
+                                    </div>
+                                    <p className="text-2xl font-bold">{daysLeft !== null ? daysLeft : "N/A"}</p>
+                                    <p className="text-sm text-gray-600">Days Left</p>
                                 </div>
                             </div>
 
-                            {/* My Tasks Section */}
-                            <div className="bg-white p-6 rounded-lg shadow-md border-2 border-gray-200">
-                                <h2 className="text-xl font-bold mb-4 border-b pb-2">My Tasks</h2>
-                                {tasks.length === 0 ? (
-                                    <p>No tasks available!</p>
-                                ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                                {/* To Do Tasks Table */}
+                                <div className="bg-white p-6 rounded-lg shadow-md border-2 border-gray-200">
+                                    <h2 className="text-xl font-bold mb-4 border-b pb-2">To Do Tasks</h2>
+                                    {toDoTasks.length === 0 ? (
+                                    <p>No tasks in "To Do" status!</p>
+                                    ) : (
                                     <div className="overflow-x-auto">
                                         <table className="min-w-full divide-y divide-gray-200">
-                                            <thead className="bg-gray-50">
-                                                <tr>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deadline</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sprint</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="bg-white divide-y divide-gray-200">
-                                                {tasks.map((task, index) => (
-                                                    <tr key={index}>
-                                                        <td className="px-6 py-4 whitespace-nowrap">{task.nombre}</td>
-                                                        <td className="px-6 py-4 whitespace-nowrap">
-                                                            {task.fechaLimite
-                                                                ? new Date(task.fechaLimite).toLocaleDateString()
-                                                                : "No deadline"}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap">{task.sprint || "N/A"}</td>
-                                                        <td className="px-6 py-4 whitespace-nowrap">
-                                                            {task.completado ? "Completed" : "In Progress"}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task Name</th>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {toDoTasks.map((task, index) => (
+                                            <tr key={index}>
+                                                <td className="px-4 py-2 text-xs whitespace-nowrap">{task.tareaNombre}</td>
+                                                <td className="px-4 py-2 text-xs whitespace-nowrap">
+                                                {task.fechaEntrega
+                                                    ? new Date(task.fechaEntrega).toLocaleDateString()
+                                                    : "No deadline"}
+                                                </td>
+                                                <td className="px-4 py-2 text-xs whitespace-nowrap">To Do</td>
+                                            </tr>
+                                            ))}
+                                        </tbody>
                                         </table>
                                     </div>
-                                )}
+                                    )}
+                                </div>
+
+                                {/* Completed Tasks and Sprint Info Card */}
+                                <div className="bg-white p-6 rounded-lg shadow-md border-2 border-gray-200">
+                                    <h2 className="text-xl font-bold mb-4 border-b pb-2">Completed Tasks Overview</h2>
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between">
+                                            <span className="font-medium text-gray-600">Completed Tasks:</span>
+                                            <span className="font-bold text-gray-800">{completedTasks}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="font-medium text-gray-600">Estimated Hours:</span>
+                                            <span className="font-bold text-gray-800">{totalEstimatedHours}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="font-medium text-gray-600">Real Hours:</span>
+                                            <span className="font-bold text-gray-800">{totalRealHours}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="font-medium text-gray-600">Sprint:</span>
+                                            <span className="font-bold text-gray-800">
+                                            {tasks.length > 0 && tasks[0].sprint ? tasks[0].sprint : "N/A"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </>
                     )}

@@ -31,6 +31,10 @@ public class HomeController {
     @GetMapping("/user-kpis")
     public ResponseEntity<Map<String, Object>> getUserKPIs(@RequestHeader("userId") Long loggedInUserId) {
         try {
+            if (loggedInUserId == null) {
+                return ResponseEntity.status(403).body(Map.of("error", "User ID is missing"));
+            }
+
             // Fetch user details
             ResponseEntity<Usuario> userResponse = usuarioService.getUsuarioById(loggedInUserId);
             if (!userResponse.getStatusCode().is2xxSuccessful() || userResponse.getBody() == null) {
@@ -66,7 +70,7 @@ public class HomeController {
             response.put("percentageCompleted", percentageCompleted);
             response.put("totalRealHours", totalRealHours);
             response.put("totalEstimatedHours", totalEstimatedHours);
-            response.put("tasks", userTasks); // Include tasks in the response
+            response.put("tasks", userTasks);
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {

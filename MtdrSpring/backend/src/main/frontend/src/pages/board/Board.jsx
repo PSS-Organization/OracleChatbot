@@ -48,6 +48,7 @@ const Board = () => {
     comment: "",
     isSubmitting: false,
   });
+  const [usuarios, setUsuarios] = useState([]);
 
   useEffect(() => {
     // Get current user ID from localStorage
@@ -77,6 +78,15 @@ const Board = () => {
     }
   }, [currentUserId]);
 
+  const fetchUsuarios = async () => {
+    try {
+      const response = await axiosInstance.get("/usuarios/all");
+      setUsuarios(response.data);
+    } catch (err) {
+      console.error("Error fetching usuarios:", err);
+    }
+  };
+
   const fetchTasks = async () => {
     setLoading(true);
     try {
@@ -88,7 +98,7 @@ const Board = () => {
         tag: `Sprint ${task.sprintID}`,
         tagColor: getSprintColor(task.sprintID),
         status: statusMapping[task.estadoID] || "Done",
-        users: [{ avatar: "https://randomuser.me/api/portraits/men/1.jpg" }],
+        users: [], // We'll enrich this in a separate useEffect once usuarios are available
         date: new Date(task.fechaEntrega).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
@@ -98,6 +108,7 @@ const Board = () => {
         estadoID: task.estadoID, // Store the status ID for status changes
         completed: task.completado || false, // Store completion status
         realHours: task.horasReales || null, // Store real hours
+        prioridad: task.prioridad, // Add prioridad from backend
       }));
 
       setAllTasks(formattedTasks);
@@ -109,6 +120,20 @@ const Board = () => {
       setLoading(false);
     }
   };
+  // Enrich tasks with user names after usuarios and allTasks are loaded
+  useEffect(() => {
+    if (usuarios.length > 0 && allTasks.length > 0) {
+      const enrichedTasks = allTasks.map(task => ({
+        ...task,
+        users: [{
+          avatar: "https://randomuser.me/api/portraits/men/1.jpg",
+          name: (usuarios.find(u => u.usuarioID === task.usuarioID) || {}).nombre || "Desconocido"
+        }]
+      }));
+      setAllTasks(enrichedTasks);
+      filterTasks(enrichedTasks);
+    }
+  }, [usuarios, allTasks]);
 
   useEffect(() => {
     if (currentUserId) {
@@ -163,9 +188,13 @@ const Board = () => {
     filterTasks(allTasks); // Re-filter with the current tasks
   };
 
-  // Fetch sprints on component mount
+  // Fetch usuarios first, then tasks (to ensure user info is available for task formatting)
   useEffect(() => {
-    fetchTasks();
+    const loadData = async () => {
+      await fetchUsuarios(); // Primero carga usuarios
+      await fetchTasks();    // Luego carga tareas que dependen de los usuarios
+    };
+    loadData();
   }, []);
 
   // Re-filter when userId changes or filters change

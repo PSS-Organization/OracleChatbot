@@ -46,6 +46,17 @@ const TaskCard = ({ task, onDelete, editable = true }) => {
       >
         {task.tag || "No Sprint"}
       </span>
+      {task.prioridad && (
+        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+          task.prioridad.toUpperCase() === "ALTA"
+            ? "bg-red-100 text-red-800"
+            : task.prioridad.toUpperCase() === "MEDIA"
+            ? "bg-yellow-100 text-yellow-800"
+            : "bg-green-100 text-green-800"
+        }`}>
+          Prioridad: {task.prioridad}
+        </span>
+      )}
       <h3 className="font-bold text-lg">{task.title || "Untitled Task"}</h3>
       <p className="text-gray-600 text-sm">
         {task.description || "No description"}
@@ -53,16 +64,13 @@ const TaskCard = ({ task, onDelete, editable = true }) => {
       <div className="flex items-center space-x-2">
         {task.users &&
           task.users.map((user, index) => (
-            <img
-              key={index}
-              src={user.avatar}
-              alt="User"
-              className="w-6 h-6 rounded-full"
-            />
+            <div key={index} className="flex items-center space-x-1">
+              <span className="text-sm text-gray-800 font-semibold">{user.name}</span>
+            </div>
           ))}
       </div>
       <div className="flex justify-between items-center">
-        <p className="text-sm text-gray-400">{task.date || "No date"}</p>
+        <p className="text-sm text-gray-400">Fecha de entrega: {task.date || "Sin fecha"}</p>
         {!editable && (
           <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
             No editable

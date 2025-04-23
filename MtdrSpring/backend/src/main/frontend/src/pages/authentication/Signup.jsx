@@ -68,7 +68,7 @@ const Signup = () => {
         localStorage.setItem("user", JSON.stringify(response.usuario));
         localStorage.setItem("userId", response.usuario.usuarioID);
 
-        navigate("/board");
+        navigate("/home");
       } else {
         setError(response.message || "Error en el registro");
       }

@@ -218,20 +218,40 @@ const Header = ({
 
       {/* Add Task Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-96 relative">
-            <button
-              onClick={() => setModalOpen(false)}
-              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-            >
-              <Close />
-            </button>
+        <div 
+          className="fixed inset-0 z-50"
+          aria-labelledby="modal-title"
+          role="dialog"
+          aria-modal="true"
+        >
+          {/* Background overlay */}
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
 
-            {/* Título opcional */}
-            {/* <h2 className="text-xl font-bold mb-4">{addButtonLabel}</h2> */}
-
-            {/* Renderizamos el componente dinámico */}
-            {AddComponent && <AddComponent onAddComplete={handleAddSuccess} />}
+          {/* Modal panel */}
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+              <div
+                className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal content */}
+                <div className="bg-white p-6 pb-4 sm:p-6 sm:pb-4">
+                  <div className="absolute top-0 right-0 pt-2 pr-2">
+                    <button
+                      type="button"
+                      className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none"
+                      onClick={() => setModalOpen(false)}
+                    >
+                      <span className="sr-only">Close</span>
+                      <Close />
+                    </button>
+                  </div>
+                  
+                  {/* Component */}
+                  {AddComponent && <AddComponent onAddComplete={handleAddSuccess} />}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

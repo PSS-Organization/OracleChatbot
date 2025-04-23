@@ -90,8 +90,8 @@ const Sidebar = () => {
                     ? "translate-x-0"
                     : "-translate-x-full lg:translate-x-0"
                 }
-                z-10
             `}
+        style={{ zIndex: 30 }}
       >
         <h1 className="text-xl font-bold mb-5">ProjectFlow</h1>
         <nav>

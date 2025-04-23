@@ -393,6 +393,9 @@ const Board = () => {
       <div className="flex-1 flex flex-col w-full">
         <Header
           headerTitle="Sprint Manager"
+          showUserFilter={true}
+          showVisibilityToggle={true} // Enable visibility toggle
+          showAddButton={true} // Enable Add Task button
           addButtonLabel="Add Task"
           AddComponent={AddTask}
           onAddComplete={fetchTasks}

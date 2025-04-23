@@ -150,3 +150,18 @@ export const deleteSprint = async (id) => {
     throw new Error("Failed to delete sprint");
   }
 };
+
+export const getUserKPIs = async (userId) => {
+  const backendUrl = await getBackendUrl();
+  try {
+    const response = await axiosInstance.get(`${backendUrl}/home/user-kpis`, {
+      headers: {
+        "Content-Type": "application/json",
+        "userId": userId,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.error || "Failed to fetch user KPIs");
+  }
+};

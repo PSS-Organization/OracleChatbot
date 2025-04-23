@@ -5,8 +5,10 @@ import Signup from "./pages/authentication/Signup";
 import TodoList from "./pages/TodoList";
 import Board from "./pages/board/Board";
 import Sprint from "./pages/sprint/Sprint";
+import Team from "./pages/team/Team";
 import TestAuth from "./components/TestAuth";
 import Dashboard from "./pages/dashboard/Dasboard";
+import Home from "./pages/home/Home";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
@@ -18,7 +20,7 @@ function App() {
         path="/home"
         element={
           <ProtectedRoute>
-            <TodoList />
+            <Home />
           </ProtectedRoute>
         }
       />
@@ -51,6 +53,14 @@ function App() {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/team"
+        element={
+          <ProtectedRoute>
+            <Team />
           </ProtectedRoute>
         }
       />

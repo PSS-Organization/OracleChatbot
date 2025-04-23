@@ -105,8 +105,8 @@ const Home = () => {
                                     <div className="text-red-600 text-4xl mb-2">
                                         <i className="fas fa-calendar-alt"></i> {/* Calendar Icon */}
                                     </div>
-                                    <p className="text-2xl font-bold">{daysLeft !== null ? daysLeft : "N/A"}</p>
-                                    <p className="text-sm text-gray-600">Days Left</p>
+                                    <p className="text-2xl font-bold">{daysLeft !== null ? daysLeft : "8"}</p>
+                                    <p className="text-sm text-gray-600">Current Sprint</p>
                                 </div>
                             </div>
 

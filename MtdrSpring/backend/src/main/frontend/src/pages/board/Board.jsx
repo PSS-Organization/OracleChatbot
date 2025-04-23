@@ -395,9 +395,9 @@ const Board = () => {
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className="bg-white p-4 rounded-lg shadow-md overflow-y-auto max-h-[700px] relative"
+                      className="bg-white rounded-lg shadow-md overflow-y-auto max-h-[700px] relative"
                     >
-                      <div className="flex justify-between items-center sticky top-0 z-10 bg-white py-3 -mx-4 px-4">
+                      <div className="flex justify-between items-center sticky top-0 z-10 bg-white py-3 px-4">
                         <span
                           className={
                             column.status === "To Do"

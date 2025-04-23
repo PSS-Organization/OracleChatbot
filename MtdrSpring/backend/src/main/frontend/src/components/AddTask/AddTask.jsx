@@ -90,6 +90,7 @@ const AddTask = ({ onAddComplete }) => {
       horasEstimadas: estimatedHours ? parseInt(estimatedHours) : null,
       usuarioID: parseInt(assigneeId),
       sprintID: parseInt(sprintID),
+      estadoID: 1
     };
 
     try {

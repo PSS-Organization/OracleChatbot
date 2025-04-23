@@ -7,11 +7,22 @@ import { API_TAREAS, getTareas, updateTarea, deleteTarea } from "../../API";
 import axiosInstance from "../../utils/axiosConfig";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
-const sprintColors = {
-  1: "bg-blue-200 text-blue-800",
-  2: "bg-purple-200 text-purple-800",
-  3: "bg-green-200 text-green-800",
-  4: "bg-orange-200 text-orange-800",
+
+const colorPool = [
+  "bg-blue-200 text-blue-800",
+  "bg-purple-200 text-purple-800",
+  "bg-green-200 text-green-800",
+  "bg-orange-200 text-orange-800",
+  "bg-red-200 text-red-800",
+  "bg-pink-200 text-pink-800",
+  "bg-yellow-200 text-yellow-800",
+  "bg-teal-200 text-teal-800",
+  "bg-indigo-200 text-indigo-800",
+  "bg-rose-200 text-rose-800",
+];
+
+const getSprintColor = (sprintID) => {
+  return colorPool[sprintID % colorPool.length];
 };
 
 const statusMapping = {
@@ -37,6 +48,7 @@ const Board = () => {
     comment: "",
     isSubmitting: false,
   });
+  const [usuarios, setUsuarios] = useState([]);
 
   useEffect(() => {
     // Get current user ID from localStorage
@@ -66,6 +78,15 @@ const Board = () => {
     }
   }, [currentUserId]);
 
+  const fetchUsuarios = async () => {
+    try {
+      const response = await axiosInstance.get("/usuarios/all");
+      setUsuarios(response.data);
+    } catch (err) {
+      console.error("Error fetching usuarios:", err);
+    }
+  };
+
   const fetchTasks = async () => {
     setLoading(true);
     try {
@@ -75,9 +96,9 @@ const Board = () => {
         title: task.tareaNombre,
         description: task.descripcion,
         tag: `Sprint ${task.sprintID}`,
-        tagColor: sprintColors[task.sprintID] || "bg-gray-200 text-gray-800",
+        tagColor: getSprintColor(task.sprintID),
         status: statusMapping[task.estadoID] || "Done",
-        users: [{ avatar: "https://randomuser.me/api/portraits/men/1.jpg" }],
+        users: [], // We'll enrich this in a separate useEffect once usuarios are available
         date: new Date(task.fechaEntrega).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
@@ -87,6 +108,7 @@ const Board = () => {
         estadoID: task.estadoID, // Store the status ID for status changes
         completed: task.completado || false, // Store completion status
         realHours: task.horasReales || null, // Store real hours
+        prioridad: task.prioridad, // Add prioridad from backend
       }));
 
       setAllTasks(formattedTasks);
@@ -98,6 +120,20 @@ const Board = () => {
       setLoading(false);
     }
   };
+  // Enrich tasks with user names after usuarios and allTasks are loaded
+  useEffect(() => {
+    if (usuarios.length > 0 && allTasks.length > 0) {
+      const enrichedTasks = allTasks.map(task => ({
+        ...task,
+        users: [{
+          avatar: "https://randomuser.me/api/portraits/men/1.jpg",
+          name: (usuarios.find(u => u.usuarioID === task.usuarioID) || {}).nombre || "Desconocido"
+        }]
+      }));
+      setAllTasks(enrichedTasks);
+      filterTasks(enrichedTasks);
+    }
+  }, [usuarios, allTasks]);
 
   useEffect(() => {
     if (currentUserId) {
@@ -152,9 +188,13 @@ const Board = () => {
     filterTasks(allTasks); // Re-filter with the current tasks
   };
 
-  // Fetch sprints on component mount
+  // Fetch usuarios first, then tasks (to ensure user info is available for task formatting)
   useEffect(() => {
-    fetchTasks();
+    const loadData = async () => {
+      await fetchUsuarios(); // Primero carga usuarios
+      await fetchTasks();    // Luego carga tareas que dependen de los usuarios
+    };
+    loadData();
   }, []);
 
   // Re-filter when userId changes or filters change
@@ -204,6 +244,12 @@ const Board = () => {
     const movedTask = tasks.find((task) => task.id.toString() === draggableId);
 
     if (!movedTask) return;
+
+    // Prevent dragging completed tasks out of "Done"
+    if (movedTask.completed && destination.droppableId !== "Done") {
+      alert("Esta tarea ya está completada y no puede moverse.");
+      return;
+    }
 
     // Check if user has permission to move this task
     const taskUserId =
@@ -357,7 +403,7 @@ const Board = () => {
           onToggleMyTasks={toggleMyTasks}
           onFilterChange={handleFilterChange}
         />
-        <div className="p-4 lg:p-6 mt-16 lg:mt-0 overflow-auto">
+        <div className="p-4 lg:p-6 mt-0 overflow-auto">
           <h1 className="text-2xl font-bold mb-4">Task Board</h1>
           {loading && <p>Loading sprints...</p>}
           {error && <p className="text-red-500">{error}</p>}
@@ -381,12 +427,20 @@ const Board = () => {
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className="bg-white p-4 rounded-lg shadow-md"
+                      className="bg-white rounded-lg shadow-md overflow-y-auto max-h-[700px] relative"
                     >
-                      <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-semibold">
+                      <div className="flex justify-between items-center sticky top-0 z-10 bg-white py-3 px-4">
+                        <span
+                          className={
+                            column.status === "To Do"
+                              ? "text-blue-800 bg-blue-100 px-2 py-1 rounded-full text-sm font-semibold"
+                              : column.status === "In Progress"
+                              ? "text-yellow-800 bg-yellow-100 px-2 py-1 rounded-full text-sm font-semibold"
+                              : "text-green-800 bg-green-100 px-2 py-1 rounded-full text-sm font-semibold"
+                          }
+                        >
                           {column.title}
-                        </h2>
+                        </span>
                         <span className="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-sm">
                           {
                             tasks.filter(
@@ -404,10 +458,11 @@ const Board = () => {
                               draggableId={task.id.toString()}
                               index={index}
                               isDragDisabled={
-                                !isAdmin &&
-                                (task.usuarioID == null ||
-                                  task.usuarioID.toString() !==
-                                  currentUserId?.toString())
+                                task.completed ||
+                                (!isAdmin &&
+                                  (task.usuarioID == null ||
+                                    task.usuarioID.toString() !==
+                                    currentUserId?.toString()))
                               }
                             >
                               {(provided) => (

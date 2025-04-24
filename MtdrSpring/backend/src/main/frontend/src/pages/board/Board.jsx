@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Header from "../../components/Header/Header";
 import Sidebar from "../../components/SideBar/SideBar";
 import AddTask from "../../components/AddTask/AddTask";
@@ -6,7 +6,6 @@ import TaskCard from "../../components/TaskCard/TaskCard";
 import { API_TAREAS, getTareas, updateTarea, deleteTarea } from "../../API";
 import axiosInstance from "../../utils/axiosConfig";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-
 
 const colorPool = [
   "bg-blue-200 text-blue-800",
@@ -40,6 +39,7 @@ const Board = () => {
   const [currentUserId, setCurrentUserId] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [filters, setFilters] = useState({ sprints: [], users: [] });
+  const [usuarios, setUsuarios] = useState([]);
   const [completionModal, setCompletionModal] = useState({
     visible: false,
     taskId: null,
@@ -48,18 +48,28 @@ const Board = () => {
     comment: "",
     isSubmitting: false,
   });
-  const [usuarios, setUsuarios] = useState([]);
 
   useEffect(() => {
     // Get current user ID from localStorage
     const userId = localStorage.getItem("userId");
-    setCurrentUserId(userId);
-
-    // Check if user is admin
     if (userId) {
+      setCurrentUserId(userId);
       checkAdminStatus(userId);
     }
+
+    // Iniciar carga de datos
+    loadInitialData();
   }, []);
+
+  const loadInitialData = async () => {
+    try {
+      await fetchUsuarios();
+      await fetchTasks();
+    } catch (error) {
+      console.error("Error loading initial data:", error);
+      setError("Error cargando datos iniciales");
+    }
+  };
 
   const checkAdminStatus = async (userId) => {
     try {
@@ -72,135 +82,115 @@ const Board = () => {
     }
   };
 
-  useEffect(() => {
-    if (currentUserId) {
-      fetchTasks();
-    }
-  }, [currentUserId]);
-
   const fetchUsuarios = async () => {
     try {
       const response = await axiosInstance.get("/usuarios/all");
       setUsuarios(response.data);
+      return response.data;
     } catch (err) {
       console.error("Error fetching usuarios:", err);
+      return [];
     }
   };
 
   const fetchTasks = async () => {
     setLoading(true);
     try {
+      // Obtener usuarios si aún no están cargados
+      let usersList = usuarios;
+      if (usuarios.length === 0) {
+        usersList = await fetchUsuarios();
+      }
+
       const response = await getTareas();
-      const formattedTasks = response.map((task) => ({
-        id: task.tareaID,
-        title: task.tareaNombre,
-        description: task.descripcion,
-        tag: `Sprint ${task.sprintID}`,
-        tagColor: getSprintColor(task.sprintID),
-        status: statusMapping[task.estadoID] || "Done",
-        users: [], // We'll enrich this in a separate useEffect once usuarios are available
-        date: new Date(task.fechaEntrega).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        }),
-        usuarioID: task.usuarioID, // Store the user ID for filtering
-        sprintID: task.sprintID, // Store the sprint ID for filtering
-        estadoID: task.estadoID, // Store the status ID for status changes
-        completed: task.completado || false, // Store completion status
-        realHours: task.horasReales || null, // Store real hours
-        prioridad: task.prioridad, // Add prioridad from backend
-      }));
+      const formattedTasks = response.map((task) => {
+        const assignedUser = usersList.find(
+          (u) => u.usuarioID === task.usuarioID
+        );
+        return {
+          id: task.tareaID,
+          title: task.tareaNombre,
+          description: task.descripcion,
+          tag: `Sprint ${task.sprintID}`,
+          tagColor: getSprintColor(task.sprintID),
+          status: statusMapping[task.estadoID] || "Done",
+          users: [
+            {
+              avatar: "https://randomuser.me/api/portraits/men/1.jpg",
+              name: assignedUser ? assignedUser.nombre : "Sin asignar",
+            },
+          ],
+          date: new Date(task.fechaEntrega).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          }),
+          usuarioID: task.usuarioID,
+          sprintID: task.sprintID,
+          estadoID: task.estadoID,
+          completed: task.completado || false,
+          realHours: task.horasReales || null,
+          prioridad: task.prioridad,
+        };
+      });
 
       setAllTasks(formattedTasks);
-      filterTasks(formattedTasks);
-      setError("");
+      applyFilters(formattedTasks);
+      setError(null);
     } catch (err) {
       setError(err.message);
+      console.error("Error fetching tasks:", err);
     } finally {
       setLoading(false);
     }
   };
-  // Enrich tasks with user names after usuarios and allTasks are loaded
+
+  // Función para aplicar filtros que no depende de los estados
+  const applyFilters = useCallback(
+    (tasksToFilter) => {
+      let filteredTasks = [...tasksToFilter];
+
+      // Aplicar filtros de sprint si hay seleccionados
+      if (filters.sprints && filters.sprints.length > 0) {
+        filteredTasks = filteredTasks.filter(
+          (task) => task.sprintID && filters.sprints.includes(task.sprintID)
+        );
+      }
+
+      // Aplicar filtros de usuario si hay seleccionados
+      if (filters.users && filters.users.length > 0) {
+        filteredTasks = filteredTasks.filter(
+          (task) => task.usuarioID && filters.users.includes(task.usuarioID)
+        );
+      }
+
+      // Filtrar por tareas del usuario actual si está activada la opción
+      if (showMyTasksOnly && currentUserId) {
+        filteredTasks = filteredTasks.filter(
+          (task) => task.usuarioID?.toString() === currentUserId?.toString()
+        );
+      }
+
+      setTasks(filteredTasks);
+    },
+    [filters, showMyTasksOnly, currentUserId]
+  );
+
+  // Efecto para aplicar filtros cuando cambian las condiciones
   useEffect(() => {
-    if (usuarios.length > 0 && allTasks.length > 0) {
-      const enrichedTasks = allTasks.map(task => ({
-        ...task,
-        users: [{
-          avatar: "https://randomuser.me/api/portraits/men/1.jpg",
-          name: (usuarios.find(u => u.usuarioID === task.usuarioID) || {}).nombre || "Desconocido"
-        }]
-      }));
-      setAllTasks(enrichedTasks);
-      filterTasks(enrichedTasks);
+    if (allTasks.length > 0) {
+      applyFilters(allTasks);
     }
-  }, [usuarios, allTasks]);
+  }, [filters, showMyTasksOnly, currentUserId, applyFilters, allTasks]);
 
-  useEffect(() => {
-    if (currentUserId) {
-      filterTasks();
-    }
-  }, [showMyTasksOnly, filters, currentUserId]);
-
-  // Filter tasks based on the toggle state and filters
-  const filterTasks = (tasksToFilter = allTasks) => {
-    let filteredTasks = [...tasksToFilter];
-
-    // Filter by user ownership if showMyTasksOnly is true
-    if (showMyTasksOnly && currentUserId) {
-      filteredTasks = filteredTasks.filter(
-        (task) =>
-          task.usuarioID != null &&
-          task.usuarioID.toString() === currentUserId.toString()
-      );
-    }
-
-    // Apply sprint filters if any are selected
-    if (filters.sprints && filters.sprints.length > 0) {
-      filteredTasks = filteredTasks.filter(
-        (task) =>
-          task.sprintID != null && filters.sprints.includes(task.sprintID)
-      );
-    }
-
-    // Apply user filters if any are selected
-    if (filters.users && filters.users.length > 0) {
-      filteredTasks = filteredTasks.filter(
-        (task) =>
-          task.usuarioID != null && filters.users.includes(task.usuarioID)
-      );
-    }
-
-    setTasks(filteredTasks);
-  };
-
-  // Toggle between showing all tasks and only user's tasks
+  // Toggle entre mostrar todas las tareas o solo las del usuario actual
   const toggleMyTasks = () => {
-    setShowMyTasksOnly((prev) => {
-      const newState = !prev;
-      filterTasks(allTasks); // reapply filters
-      return newState;
-    });
+    setShowMyTasksOnly(!showMyTasksOnly);
   };
 
-  // Handle filter changes from Header component
+  // Manejador para los cambios de filtros desde el componente Header
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
-    filterTasks(allTasks); // Re-filter with the current tasks
   };
-
-  // Fetch usuarios first, then tasks (to ensure user info is available for task formatting)
-  useEffect(() => {
-    const loadData = async () => {
-      await fetchUsuarios(); // Primero carga usuarios
-      await fetchTasks();    // Luego carga tareas que dependen de los usuarios
-    };
-    loadData();
-  }, []);
-
-  // Re-filter when userId changes or filters change
-  useEffect(() => {
-    filterTasks();
-  }, [currentUserId, filters, showMyTasksOnly]);
 
   const columns = [
     { title: "To Do", status: "To Do" },
@@ -219,7 +209,7 @@ const Board = () => {
       await deleteTarea(taskId);
       const updatedAllTasks = allTasks.filter((task) => task.id !== taskId);
       setAllTasks(updatedAllTasks);
-      filterTasks(updatedAllTasks);
+      applyFilters(updatedAllTasks);
     } catch (error) {
       console.error("❌ Error al eliminar tarea:", error);
     }
@@ -353,10 +343,7 @@ const Board = () => {
       );
 
       setAllTasks(updatedAllTasks);
-      filterTasks(updatedAllTasks);
-
-      // Also update task status
-      // await updateTaskStatus(completionModal.taskId, "Done");
+      applyFilters(updatedAllTasks);
 
       // Close the modal
       setCompletionModal({
@@ -411,12 +398,14 @@ const Board = () => {
             {tasks.length} tasks in progress
             {showMyTasksOnly ? " (showing only my tasks)" : ""}
             {filters.sprints.length > 0
-              ? ` (filtered by ${filters.sprints.length} sprint${filters.sprints.length > 1 ? "s" : ""
-              })`
+              ? ` (filtered by ${filters.sprints.length} sprint${
+                  filters.sprints.length > 1 ? "s" : ""
+                })`
               : ""}
             {filters.users.length > 0
-              ? ` (filtered by ${filters.users.length} user${filters.users.length > 1 ? "s" : ""
-              })`
+              ? ` (filtered by ${filters.users.length} user${
+                  filters.users.length > 1 ? "s" : ""
+                })`
               : ""}
           </p>
           <DragDropContext onDragEnd={handleDragEnd}>
@@ -462,7 +451,7 @@ const Board = () => {
                                 (!isAdmin &&
                                   (task.usuarioID == null ||
                                     task.usuarioID.toString() !==
-                                    currentUserId?.toString()))
+                                      currentUserId?.toString()))
                               }
                             >
                               {(provided) => (
@@ -472,8 +461,8 @@ const Board = () => {
                                   {...provided.dragHandleProps}
                                   className={
                                     !isAdmin &&
-                                      (task.usuarioID == null ||
-                                        task.usuarioID.toString() !==
+                                    (task.usuarioID == null ||
+                                      task.usuarioID.toString() !==
                                         currentUserId?.toString())
                                       ? "opacity-70"
                                       : ""
@@ -486,7 +475,7 @@ const Board = () => {
                                       isAdmin ||
                                       (task.usuarioID != null &&
                                         task.usuarioID.toString() ===
-                                        currentUserId?.toString())
+                                          currentUserId?.toString())
                                     }
                                   />
                                 </div>
@@ -514,7 +503,7 @@ const Board = () => {
               <strong>{completionModal.taskName}</strong>
             </p>
 
-            <form onSubmit={e => e.preventDefault()}>
+            <form onSubmit={(e) => e.preventDefault()}>
               <div className="mb-4">
                 <label
                   className="block text-gray-700 text-sm font-bold mb-2"

@@ -65,7 +65,6 @@ const Header = ({
       setSelectedSprints([...selectedSprints, sprintId]);
     } else {
       setSelectedSprints(selectedSprints.filter((id) => id !== sprintId));
-      setSelectedSprints(selectedSprints.filter((id) => id !== sprintId));
     }
   };
 
@@ -73,7 +72,6 @@ const Header = ({
     if (e.target.checked) {
       setSelectedUsers([...selectedUsers, userId]);
     } else {
-      setSelectedUsers(selectedUsers.filter((id) => id !== userId));
       setSelectedUsers(selectedUsers.filter((id) => id !== userId));
     }
   };
@@ -116,7 +114,9 @@ const Header = ({
               showMyTasksOnly ? "bg-blue-100 text-blue-800" : "bg-gray-100"
             } px-3 py-2 rounded-md`}
             onClick={onToggleMyTasks}
-            title={showMyTasksOnly ? "Showing only my tasks" : "Showing all tasks"}
+            title={
+              showMyTasksOnly ? "Showing only my tasks" : "Showing all tasks"
+            }
           >
             {showMyTasksOnly ? <Visibility /> : <VisibilityOff />}
             <span>{showMyTasksOnly ? "My Tasks" : "All Tasks"}</span>
@@ -148,15 +148,22 @@ const Header = ({
                     <h4 className="font-semibold mb-2">Sprints</h4>
                     <div className="max-h-40 overflow-y-auto">
                       {sprints.map((sprint) => (
-                        <div key={sprint.sprintID} className="flex items-center mb-1">
+                        <div
+                          key={sprint.sprintID}
+                          className="flex items-center mb-1"
+                        >
                           <input
                             type="checkbox"
                             id={`sprint-${sprint.sprintID}`}
                             checked={selectedSprints.includes(sprint.sprintID)}
-                            onChange={(e) => handleSprintChange(e, sprint.sprintID)}
+                            onChange={(e) =>
+                              handleSprintChange(e, sprint.sprintID)
+                            }
                             className="mr-2"
                           />
-                          <label htmlFor={`sprint-${sprint.sprintID}`}>{sprint.nombreSprint}</label>
+                          <label htmlFor={`sprint-${sprint.sprintID}`}>
+                            {sprint.nombreSprint}
+                          </label>
                         </div>
                       ))}
                     </div>
@@ -168,15 +175,22 @@ const Header = ({
                       <h4 className="font-semibold mb-2">Users</h4>
                       <div className="max-h-40 overflow-y-auto">
                         {usuarios.map((user) => (
-                          <div key={user.usuarioID} className="flex items-center mb-1">
+                          <div
+                            key={user.usuarioID}
+                            className="flex items-center mb-1"
+                          >
                             <input
                               type="checkbox"
                               id={`user-${user.usuarioID}`}
                               checked={selectedUsers.includes(user.usuarioID)}
-                              onChange={(e) => handleUserChange(e, user.usuarioID)}
+                              onChange={(e) =>
+                                handleUserChange(e, user.usuarioID)
+                              }
                               className="mr-2"
                             />
-                            <label htmlFor={`user-${user.usuarioID}`}>{user.nombre}</label>
+                            <label htmlFor={`user-${user.usuarioID}`}>
+                              {user.nombre}
+                            </label>
                           </div>
                         ))}
                       </div>
@@ -218,7 +232,7 @@ const Header = ({
 
       {/* Add Task Modal */}
       {isModalOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-50"
           aria-labelledby="modal-title"
           role="dialog"
@@ -246,9 +260,11 @@ const Header = ({
                       <Close />
                     </button>
                   </div>
-                  
+
                   {/* Component */}
-                  {AddComponent && <AddComponent onAddComplete={handleAddSuccess} />}
+                  {AddComponent && (
+                    <AddComponent onAddComplete={handleAddSuccess} />
+                  )}
                 </div>
               </div>
             </div>

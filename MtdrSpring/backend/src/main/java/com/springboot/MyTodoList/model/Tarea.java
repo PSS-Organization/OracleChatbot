@@ -10,6 +10,8 @@ import javax.persistence.Id;
 import javax.persistence.Lob;
 import javax.persistence.Table;
 
+
+
 @Entity
 @Table(name = "TAREAS")
 public class Tarea {

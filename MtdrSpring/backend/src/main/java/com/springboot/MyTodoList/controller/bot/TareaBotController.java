@@ -17,10 +17,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
 import com.springboot.MyTodoList.model.Sprint;
 import com.springboot.MyTodoList.model.Tarea;
@@ -964,7 +962,7 @@ public class TareaBotController {
         }
     }
 
-    private void showUserTasks(Long chatId, Long telegramId, TelegramLongPollingBot bot) {
+    public void showUserTasks(Long chatId, Long telegramId, TelegramLongPollingBot bot) {
         try {
             Optional<Usuario> usuarioOpt = usuarioService.getUsuarioByTelegramId(telegramId);
             if (usuarioOpt.isEmpty()) {

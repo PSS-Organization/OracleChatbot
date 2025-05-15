@@ -25,4 +25,7 @@ public interface TareaRepository extends JpaRepository<Tarea, Long> {
 
     // Obtener tareas por prioridad
     List<Tarea> findByPrioridad(String prioridad);
+
+    List<Tarea> findByUsuarioIDAndSprintIDAndCompletado(Long usuarioID, Long sprintID, Integer completado);
+
 }

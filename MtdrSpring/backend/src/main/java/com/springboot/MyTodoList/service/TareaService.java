@@ -113,4 +113,10 @@ public class TareaService {
     public List<Estado> getAllEstados() {
         return estadoRepository.findAll();
     }
+
+    public List<Tarea> getTareasCompletadasByUsuarioYSprint(Long usuarioId, Long sprintId){
+        return tareaRepository.findByUsuarioIDAndSprintIDAndCompletado(usuarioId, sprintId, 1);
+    }
+
+
 }

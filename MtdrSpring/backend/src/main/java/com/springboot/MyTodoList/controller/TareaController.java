@@ -223,4 +223,11 @@ public class TareaController {
         List<Tarea> tareas = tareaService.getTareasByEstado(estadoID);
         return new ResponseEntity<>(tareas, HttpStatus.OK);
     }
+
+    @GetMapping("/usuario/{usuarioId}/sprint/{sprintId}/completadas")
+    public ResponseEntity<List<Tarea>> getTareasCompletadasByUsuarioYSprint(@PathVariable Long usuarioId, @PathVariable Long sprintId) {
+        List<Tarea> tareas = tareaService.getTareasCompletadasByUsuarioYSprint(usuarioId, sprintId);
+        return new ResponseEntity<>(tareas, HttpStatus.OK);
+    }
+
 }

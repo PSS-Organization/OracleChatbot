@@ -30,6 +30,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
 
+        // Check if the request is for a static resource or public endpoint
+        String path = request.getRequestURI();
+        // Let SPA routes pass through for client-side routing
+        if (path.matches("/(login|signup|home|board|sprint|dashboard|team|test-auth)(/.*)?$")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         final String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
@@ -40,6 +48,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String jwt = authHeader.substring(7);
             if (jwtService.validateToken(jwt)) {
                 String username = jwtService.extractUsername(jwt);
+                // We'll use userId in the request attribute
+                Long userId = jwtService.extractUserId(jwt);
+                request.setAttribute("userId", userId);
 
                 if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                     UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
@@ -52,11 +63,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             userDetails,
                             null,
                             userDetails.getAuthorities());
+
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
         } catch (Exception e) {
+            SecurityContextHolder.clearContext();
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }

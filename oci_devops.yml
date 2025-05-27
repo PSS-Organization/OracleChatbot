@@ -28,6 +28,20 @@ steps:
               cat at.cfg | docker login -u "axc45eys7hf0/a01772130@tec.mx" --password-stdin mx-queretaro-1.ocir.io
 
   - type: Command
+    name: "Install K8s"
+    command: mkdir -p $HOME/.kube;
+      cd $HOME;
+      mkdir k8s;
+      cd k8s;
+      wget https://dl.k8s.io/v1.31.2/bin/linux/amd64/kubectl;
+      chmod +x kubectl;
+      export PATH=$PATH:$HOME/k8s;
+      cd ..;
+      cd .kube;
+      oci ce cluster create-kubeconfig --cluster-id ocid1.cluster.oc1.mx-queretaro-1.aaaaaaaal3uidrtvo236xosw6bm3r7ahq4lpdav52za4vuuykcjiszigrgnq --file $HOME/.kube/config --region mx-queretaro-1 --token-version 2.0.0 --kube-endpoint PUBLIC_ENDPOINT;
+      export KUBECONFIG=$HOME/.kube/config;
+
+  - type: Command
     name: "Undeploy"
     command:  cd MtdrSpring;
               source env.sh;
@@ -38,5 +52,3 @@ steps:
     command:  cd MtdrSpring;
               source env.sh;
               (cd backend;source build.sh)
-
-

@@ -28,10 +28,15 @@ steps:
               cat at.cfg | docker login -u "axc45eys7hf0/a01772130@tec.mx" --password-stdin mx-queretaro-1.ocir.io
 
   - type: Command
+    name: "Undeploy"
+    command:  cd MtdrSpring;
+              source env.sh;
+              (cd backend;source undeploy.sh)
+              
+  - type: Command
     name: "Build"
     command:  cd MtdrSpring;
               source env.sh;
               (cd backend;source build.sh)
-
 
 

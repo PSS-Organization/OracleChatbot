@@ -65,3 +65,9 @@ steps:
 
       echo "🔍 Ejecutando escaneo ZAP con Java 17 (GraalVM)..."
       JAVA_HOME=$JAVA_HOME ./zap.sh -cmd -quickurl http://$TARGET_IP -quickout /root/zap-report.html -quickprogress
+
+
+    outputArtifacts:
+        - name: zapReport
+          type: BINARY
+          location: /root/zap-report.html

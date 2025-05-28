@@ -41,7 +41,7 @@ steps:
 
       # Crear kubeconfig
       oci ce cluster create-kubeconfig \
-        --cluster-id ocid1.cluster.oc1.mx-queretaro-1.aaaaaaaayt4ltydknxnaxvp6gzsgh4sxzkstzoc65r4ppjo4ac54i5xmdcwa \
+        --cluster-id ocid1.cluster.oc1.mx-queretaro-1.aaaaaaaal3uidrtvo236xosw6bm3r7ahq4lpdav52za4vuuykcjiszigrgnq\
         --file $HOME/.kube/config \
         --region mx-queretaro-1 \
         --token-version 2.0.0 \

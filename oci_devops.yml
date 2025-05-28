@@ -43,6 +43,7 @@ steps:
 
   - type: Command
     name: "Undeploy"
+    ignoreFailure: true
     command:  cd MtdrSpring;
               source env.sh;
               (cd backend;source undeploy.sh)

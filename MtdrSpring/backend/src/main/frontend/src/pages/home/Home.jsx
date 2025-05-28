@@ -349,7 +349,7 @@ const Home = () => {
             //Prueba para OCI CI/CD
             headerTitle={`${
               userInfo?.nombre || "User"
-            }'s Dashboard CI/CD Prueba`}
+            }'s Dashboard CI/CD Prueba 1.3`}
             showUserFilter={false}
             showFilter={false}
           />

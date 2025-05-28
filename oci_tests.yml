@@ -1,0 +1,67 @@
+version: 0.1
+component: build
+timeoutInSeconds: 1800
+shell: bash
+
+env:
+  variables:
+    JAVA_HOME: /usr/lib64/graalvm/graalvm22-ee-java17
+
+  exportedVariables:
+    - BuildServiceDemoVersion
+    - JAVA_HOME
+
+steps:
+  - type: Command
+    name: "Instalar Native Image para GraalVM"
+    command: |
+      echo "⚙️ Instalando GraalVM Native Image para Java 17..."
+      yum -y install graalvm22-ee-17-native-image || echo "⚠️ No se pudo instalar Native Image (puede omitirse)."
+
+  - type: Command
+    name: "Configurar entorno Java 17 (GraalVM)"
+    command: |
+      export PATH=$JAVA_HOME/bin:$PATH
+      echo "✅ Versión de Java:"
+      java -version
+
+  - type: Command
+    name: "Instalar y ejecutar ZAP con Java 17 (GraalVM)"
+    command: |
+      export PATH=$JAVA_HOME/bin:$PATH
+
+      # Instalar kubectl
+      mkdir -p $HOME/.kube
+      cd $HOME
+      mkdir -p k8s
+      cd k8s
+      curl -LO https://dl.k8s.io/v1.31.2/bin/linux/amd64/kubectl
+      chmod +x kubectl
+      mv kubectl /usr/local/bin/
+
+      # Crear kubeconfig
+      oci ce cluster create-kubeconfig \
+        --cluster-id ocid1.cluster.oc1.mx-queretaro-1.aaaaaaaayt4ltydknxnaxvp6gzsgh4sxzkstzoc65r4ppjo4ac54i5xmdcwa \
+        --file $HOME/.kube/config \
+        --region mx-queretaro-1 \
+        --token-version 2.0.0 \
+        --kube-endpoint PUBLIC_ENDPOINT
+
+      export KUBECONFIG=$HOME/.kube/config
+
+      echo "⏳ Esperando 30 segundos para IP del LoadBalancer..."
+      sleep 30
+      TARGET_IP=$(kubectl get svc --all-namespaces -o jsonpath='{.items[?(@.spec.type=="LoadBalancer")].status.loadBalancer.ingress[0].ip}')
+      echo "✅ IP obtenida: $TARGET_IP"
+
+      # Instalar OWASP ZAP
+      cd /root
+      mkdir -p zap
+      cd zap
+      curl -LO https://github.com/zaproxy/zaproxy/releases/download/v2.16.1/ZAP_2.16.1_Linux.tar.gz
+      tar -xvzf ZAP_2.16.1_Linux.tar.gz
+      cd ZAP_2.16.1
+      chmod +x zap.sh
+
+      echo "🔍 Ejecutando escaneo ZAP con Java 17 (GraalVM)..."
+      JAVA_HOME=$JAVA_HOME ./zap.sh -cmd -quickurl http://$TARGET_IP -quickout /root/zap-report.html -quickprogress

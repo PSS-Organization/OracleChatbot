@@ -52,7 +52,7 @@ const Sidebar = () => {
       name: "Chatbot",
       icon: <Chat />,
       external: true,
-      path: "https://web.telegram.org/k/#@pss_oracle_bot",
+      path: "https://web.telegram.org/k/#@OraclePSS_Bot",
     },
     { name: "Team", icon: <Group />, path: "/team" },
     { name: "Sprint", icon: <Task />, path: "/sprint" },
